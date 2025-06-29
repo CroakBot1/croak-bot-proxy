@@ -18,12 +18,12 @@ app.get("/price", async (req, res) => {
       eth: ethData.data.ethereum.usd,
       btc: btcData.data.bitcoin.usd,
     });
-  } catch (e) {
+  } catch (error) {
     res.status(500).json({ error: "Failed to fetch price data." });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Croak Proxy Bot running on port ${PORT}`);
 });
