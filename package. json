@@ -1,13 +1,13 @@
 {
-  "name": "croak-proxy-bot",
+  "name": "croak-bot-proxy",
   "version": "1.0.0",
+  "description": "CROAK proxy backend for price fetcher with CORS",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "node-fetch": "^2.6.9"
+    "cors": "^2.8.5"
   }
 }
