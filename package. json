@@ -1,7 +1,6 @@
 {
   "name": "croak-bot-proxy",
   "version": "1.0.0",
-  "description": "ETH/BTC price proxy server for Croak Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
