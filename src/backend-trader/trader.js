@@ -1,8 +1,8 @@
 // trader.js
-const fetchPrice = require('./priceFetcher'); // Fetch ETH price from Bybit or any source
-const { shouldBuy, shouldSell } = require('./brain'); // Strategy logic (61K, filters, etc)
-const logger = require('./logger'); // Custom log formatter
-const executor = require('./executor'); // Trade executor (Uniswap live)
+const fetchPrice = require('./priceFetcher');
+const { shouldBuy, shouldSell } = require('./brain');
+const logger = require('./logger');
+const executor = require('./executor');
 
 async function checkPriceAndTrade() {
   try {
@@ -16,10 +16,10 @@ async function checkPriceAndTrade() {
 
     if (shouldBuy(price)) {
       logger.success(`🟢 BUY SIGNAL triggered at $${price}`);
-      await executor.buyETH(); // Call the buy function
+      await executor.buyETH(); // <-- execute via executor
     } else if (shouldSell(price)) {
       logger.warn(`🔴 SELL SIGNAL triggered at $${price}`);
-      await executor.sellETH(); // Call the sell function
+      await executor.sellETH(); // <-- execute via executor
     } else {
       logger.debug(`🟡 No trade action at $${price} – Monitoring…`);
     }
