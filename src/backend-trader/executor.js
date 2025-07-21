@@ -1,68 +1,60 @@
-// == CROAK EXECUTOR v1.0 - INLINE VERSION ==
+// == Uniswap BASE Chain Trade Executor ==
+// Description: Buys ETH using USDC on Base Chain via Uniswap V3
 
-const { ethers } = require('ethers');
+const { ethers } = require("ethers");
+const { abi: swapRouterAbi } = require("@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json");
+require("dotenv").config();
 
-// === CONFIGURATION ===
-const PRIVATE_KEY = '1ee0f8d1c5949c7d5d2cb77a8ab2e88d91d6d6c2f934bccb07a949113ecc3776';
-const WALLET = '0x08634700dA4c9a33a00e33F7703C7f80fA691836';
-const RPC = 'https://mainnet.base.org';
-const provider = new ethers.JsonRpcProvider(RPC);
+// === ENVIRONMENT ===
+const PRIVATE_KEY = "1ee0f8d1c5949c7d5d2cb77a8ab2e88d91d6d6c2f934bccb07a949113ecc3776";
+const WALLET_ADDRESS = "0x08634700dA4c9a33a00e33F7703C7f80fA691836";
+const RPC_URL = "https://mainnet.base.org";
+const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// === TOKEN & ROUTER CONFIG ===
-const routerAddress = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Base Uniswap Router
-const tokenIn = '0x4200000000000000000000000000000000000006'; // WETH (BASE)
-const tokenOut = ethers.getAddress('0x845Dc63f84cE1C641625579f82d9bBb5f713Ba03'); // Validated checksummed
+// === UNISWAP CONFIG ===
+const SWAP_ROUTER_ADDRESS = "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86"; // Base chain SwapRouter
+const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, swapRouterAbi, wallet);
 
-// === ABI: Inline Uniswap Router ===
-const uniswapRouterAbi = [
-  'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)',
-  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)',
-  'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)',
-  'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)'
-];
+// === TOKENS ===
+const USDC = {
+    address: "0xd9AA94D5360A203dE21B7177BbCbD8cD2c82D2C2",
+    decimals: 6
+};
 
-// === ABI: Inline ERC20 ===
-const erc20Abi = [
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)',
-  'function balanceOf(address account) external view returns (uint256)',
-  'function decimals() view returns (uint8)'
-];
+const WETH = {
+    address: "0x4200000000000000000000000000000000000006",
+    decimals: 18
+};
 
-// === Contracts ===
-const router = new ethers.Contract(routerAddress, uniswapRouterAbi, wallet);
-const tokenInContract = new ethers.Contract(tokenIn, erc20Abi, wallet);
-
-// === MAIN BUY FUNCTION ===
-async function buyETH(amountInEth = '0.0005') {
-  try {
-    const amountInWei = ethers.parseEther(amountInEth);
-    const path = [tokenIn, tokenOut];
+// === SWAP FUNCTION ===
+async function swapUSDCtoWETH(amountInUSDC) {
+    const amountIn = ethers.utils.parseUnits(amountInUSDC.toString(), USDC.decimals);
     const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-    // Estimate output
-    const amounts = await router.getAmountsOut(amountInWei, path);
-    const amountOutMin = amounts[1] - (amounts[1] / BigInt(10)); // 10% slippage
+    // Approve router to spend USDC
+    const usdcContract = new ethers.Contract(USDC.address, ["function approve(address spender, uint256 amount) public returns (bool)"], wallet);
+    const approvalTx = await usdcContract.approve(SWAP_ROUTER_ADDRESS, amountIn);
+    await approvalTx.wait();
+    console.log("✅ Approved USDC for swap");
 
-    console.log('[🔁] Executing swap...');
-    const tx = await router.swapExactETHForTokens(
-      amountOutMin,
-      path,
-      WALLET,
-      deadline,
-      { value: amountInWei, gasLimit: 300000 }
-    );
+    const params = {
+        tokenIn: USDC.address,
+        tokenOut: WETH.address,
+        fee: 500, // 0.05%
+        recipient: WALLET_ADDRESS,
+        deadline,
+        amountIn,
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: 0,
+    };
 
-    console.log(`[✅] TX Sent: ${tx.hash}`);
+    const tx = await swapRouter.exactInputSingle(params, { gasLimit: 800000 });
+    console.log("🚀 Swap Transaction Hash:", tx.hash);
     await tx.wait();
-    console.log('[🎉] Swap Success!');
-  } catch (err) {
-    console.error('[❌] ERROR in buyETH:', err.message);
-  }
+    console.log("🎉 Swap Complete");
 }
 
-// === EXPORT ===
-module.exports = {
-  buyETH
-};
+// === EXECUTE ===
+swapUSDCtoWETH("10") // <-- swap 10 USDC to WETH
+    .catch(console.error);
