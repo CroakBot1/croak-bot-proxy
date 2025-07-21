@@ -1,5 +1,5 @@
 // trader.js
-const { getCurrentPrice } = require('./priceFetcher');
+const { fetchPrice: getCurrentPrice } = require('./priceFetcher');
 const { shouldBuy, shouldSell } = require('./brain');
 const logger = require('./logger');
 const SIGNAL = require('./signal');
