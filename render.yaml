@@ -1,8 +1,18 @@
 services:
   - type: web
     name: croak-bot-proxy
-    env: node
+    runtime: node
     plan: free
+    autoDeploy: true
     buildCommand: npm install
-    startCommand: npm start
-    rootDir: .
+    startCommand: node src/backend-trader/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BASE_URL
+        value: https://croak-bot-proxy.onrender.com
+
+cronJobs:
+  - name: keep-server-awake
+    schedule: "*/5 * * * *"  # every 5 minutes
+    command: curl https://croak-bot-proxy.onrender.com/ping
