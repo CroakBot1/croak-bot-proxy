@@ -5,15 +5,23 @@ const logger = require('./logger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Root endpoint – for manual health check
 app.get('/', (req, res) => {
   res.send('🐸 Croak Bot Live');
 });
 
+// Ping endpoint – used by Render cronjob to keep server alive
+app.get('/ping', (req, res) => {
+  logger.heartbeat('💓 Ping received to keep server awake.');
+  res.send('pong');
+});
+
+// Main trading loop – runs every 10 seconds
 setInterval(async () => {
   await checkPriceAndTrade();
-}, 10 * 1000); // every 10s
+}, 10 * 1000); // 10s interval
 
+// Start server
 app.listen(PORT, () => {
   logger.info(`🚀 CROAK BOT listening on port ${PORT}`);
 });
-
