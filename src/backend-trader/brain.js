@@ -1,5 +1,5 @@
 // src/backend-trader/brain.js
-const priceFetcher = require('./priceFetcher');
+const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
 
 let brainMemoryScore = 50; // initial neutral score (0–100 scale)
@@ -63,7 +63,6 @@ function analyzeMarket({ price, trend, volume, candle }) {
 
 // Wrapper to get buy signal boolean
 function shouldBuy(price) {
-  // Dummy data — replace with real market info if available
   const dummyMarketData = {
     price,
     trend: 'up',
@@ -84,7 +83,6 @@ function shouldBuy(price) {
 
 // Wrapper to get sell signal boolean
 function shouldSell(price) {
-  // Dummy data — replace with real market info if available
   const dummyMarketData = {
     price,
     trend: 'down',
@@ -103,11 +101,26 @@ function shouldSell(price) {
   return analysis.sellSignal;
 }
 
-// Optional async function to get live brain signal (if you want to expand)
-async function getLiveBrainSignal() {
+// Optional async function to get live brain signal (for future real analysis)
+async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   try {
-    const marketData = await priceFetcher.fetch();
-    const analysis = analyzeMarket(marketData);
+    const price = await fetchPrice(symbol);
+
+    const dummyMarketData = {
+      price,
+      trend: 'up', // TODO: Replace with real trend/candle data
+      volume: 0,
+      candle: {
+        green: true,
+        red: false,
+        size: 'large',
+        wickTop: false,
+        wickBottom: false,
+        bodySmall: false,
+      },
+    };
+
+    const analysis = analyzeMarket(dummyMarketData);
     logger.info('🧠 Brain Signal:', analysis);
     return analysis;
   } catch (err) {
