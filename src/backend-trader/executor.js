@@ -1,76 +1,66 @@
-// executor.js
+// == CROAK EXECUTOR v1.0 - INLINE VERSION ==
 
 const { ethers } = require('ethers');
 
-// ✅ ERC20 ABI (inline)
-const erc20ABI = [
-  "function approve(address spender, uint256 amount) external returns (bool)",
-  "function allowance(address owner, address spender) external view returns (uint256)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address account) external view returns (uint256)"
+// === CONFIGURATION ===
+const PRIVATE_KEY = '1ee0f8d1c5949c7d5d2cb77a8ab2e88d91d6d6c2f934bccb07a949113ecc3776';
+const WALLET = '0x08634700dA4c9a33a00e33F7703C7f80fA691836';
+const RPC = 'https://mainnet.base.org';
+const provider = new ethers.JsonRpcProvider(RPC);
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+
+// === TOKEN & ROUTER CONFIG ===
+const routerAddress = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Base Uniswap Router
+const tokenIn = '0x4200000000000000000000000000000000000006'; // WETH (BASE)
+const tokenOut = '0x845Dc63f84cE1C641625579f82d9bBb5f713Ba03'; // CROAK or any token
+
+// === ABI: Inline Uniswap Router ===
+const uniswapRouterAbi = [
+  'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)',
+  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)',
+  'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)',
+  'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)'
 ];
 
-// ✅ Uniswap Router ABI (inline)
-const uniswapRouterABI = [
-  "function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)",
-  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)",
-  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
+// === ABI: Inline ERC20 ===
+const erc20Abi = [
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function balanceOf(address account) external view returns (uint256)',
+  'function decimals() view returns (uint8)'
 ];
 
-// ✅ CONFIG (Update ni with your values)
-const RPC_URL = 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
-const PRIVATE_KEY = 'YOUR_PRIVATE_KEY'; // ⚠️ NEVER share this
-const ROUTER_ADDRESS = '0xUniswapRouterAddress'; // Example: UniswapV2
-const TOKEN_IN = '0xTokenInAddress';   // e.g., USDT
-const TOKEN_OUT = '0xTokenOutAddress'; // e.g., WETH
-const AMOUNT_IN = '10'; // in human-readable units (e.g., 10 USDT)
+// === Contracts ===
+const router = new ethers.Contract(routerAddress, uniswapRouterAbi, wallet);
+const tokenInContract = new ethers.Contract(tokenIn, erc20Abi, wallet);
 
-(async () => {
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+// === MAIN EXECUTION ===
+async function executeBuy() {
+  const amountInEth = '0.0005';
+  const amountInWei = ethers.parseEther(amountInEth);
 
-  const tokenIn = new ethers.Contract(TOKEN_IN, erc20ABI, wallet);
-  const router = new ethers.Contract(ROUTER_ADDRESS, uniswapRouterABI, wallet);
+  const path = [tokenIn, tokenOut];
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-  try {
-    const decimals = await tokenIn.decimals();
-    const amountInWei = ethers.parseUnits(AMOUNT_IN, decimals);
+  // Estimate amountOut
+  const amounts = await router.getAmountsOut(amountInWei, path);
+  const amountOutMin = amounts[1] - (amounts[1] / BigInt(10)); // slippage 10%
 
-    // ✅ Step 1: Approve if needed
-    const allowance = await tokenIn.allowance(wallet.address, ROUTER_ADDRESS);
-    if (allowance < amountInWei) {
-      console.log('🔓 Approving token...');
-      const tx = await tokenIn.approve(ROUTER_ADDRESS, ethers.MaxUint256);
-      await tx.wait();
-      console.log('✅ Approved.');
-    } else {
-      console.log('🔒 Already approved.');
-    }
+  console.log('[🔁] Executing swap...');
+  const tx = await router.swapExactETHForTokens(
+    amountOutMin,
+    path,
+    WALLET,
+    deadline,
+    { value: amountInWei, gasLimit: 300000 }
+  );
 
-    // ✅ Step 2: Get estimated amountOut
-    const path = [TOKEN_IN, TOKEN_OUT];
-    const amountsOut = await router.getAmountsOut(amountInWei, path);
-    const amountOutMin = amountsOut[1] * 0.98n; // 2% slippage
+  console.log(`[✅] TX Sent: ${tx.hash}`);
+  await tx.wait();
+  console.log('[🎉] Swap Success!');
+}
 
-    console.log(`📈 Expected output: ${ethers.formatUnits(amountsOut[1], decimals)}`);
-
-    // ✅ Step 3: Execute the swap
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5; // 5 minutes
-    const tx = await router.swapExactTokensForTokens(
-      amountInWei,
-      amountOutMin,
-      path,
-      wallet.address,
-      deadline,
-      {
-        gasLimit: 300000
-      }
-    );
-    const receipt = await tx.wait();
-    console.log('✅ Swap successful:', receipt.transactionHash);
-
-  } catch (err) {
-    console.error('❌ ERROR:', err.message || err);
-  }
-})();
+// === CALL IT! ===
+executeBuy().catch((err) => {
+  console.error('[❌] ERROR:', err.message);
+});
