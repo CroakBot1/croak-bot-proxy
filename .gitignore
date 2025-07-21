@@ -4,3 +4,6 @@ git push
 git add src/backend-trader/abi/erc20.json
 git commit -m "Add missing ERC20 ABI file"
 git push
+git add src/backend-trader/abi/erc20.json
+git commit -m "Add missing erc20.json ABI"
+git push
