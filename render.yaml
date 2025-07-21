@@ -2,11 +2,7 @@ services:
   - type: web
     name: croak-bot-proxy
     env: node
-    rootDir: .                 # 👈 Project root as base
+    plan: free
     buildCommand: npm install
     startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3000
+    rootDir: .
