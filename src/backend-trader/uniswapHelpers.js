@@ -1,69 +1,66 @@
+// uniswapHelpers.js
 const { ethers } = require('ethers');
+const { TradeType, CurrencyAmount, Percent } = require('@uniswap/sdk-core');
 const {
-  abi: IUniswapV3PoolABI,
-} = require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json');
-const {
-  abi: swapRouterABI,
-} = require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json');
+  Pool,
+  Route,
+  Trade,
+  SwapRouter,
+  SwapOptions,
+} = require('@uniswap/v3-sdk');
+const JSBI = require('jsbi');
 
-const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org'); // Base mainnet
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+// Constants
+const USDC_DECIMALS = 6;
+const ETH_DECIMALS = 18;
+const SLIPPAGE_TOLERANCE = new Percent(50, 10_000); // 0.50%
+const DEADLINE_BUFFER = 60 * 5; // 5 minutes
 
-// === CONSTANTS ===
-const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap v3 router
-const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // USDC
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006'; // WETH on Base
+// Contract Addresses (Base mainnet or Ethereum mainnet)
+const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // Ethereum Mainnet USDC
+const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'; // WETH
+const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap V3 Router
 
-// === CONTRACTS ===
-const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, swapRouterABI, wallet);
-
-// === HELPERS ===
-
-async function buyETH(amountInUSDC) {
-  const amountIn = ethers.utils.parseUnits(amountInUSDC.toString(), 6); // USDC = 6 decimals
-
-  const params = {
-    tokenIn: USDC_ADDRESS,
-    tokenOut: WETH_ADDRESS,
-    fee: 3000, // 0.3%
-    recipient: wallet.address,
-    deadline: Math.floor(Date.now() / 1000) + 60 * 5,
-    amountIn,
-    amountOutMinimum: 0,
-    sqrtPriceLimitX96: 0,
-  };
-
-  const tx = await swapRouter.exactInputSingle(params, {
-    gasLimit: 300000,
-  });
-
-  console.log(`🟢 Swapping USDC → ETH: TX Hash: ${tx.hash}`);
-  await tx.wait();
+function toReadable(amount, decimals = 18) {
+  return ethers.utils.formatUnits(amount.toString(), decimals);
 }
 
-async function sellETH(amountInETH) {
-  const amountIn = ethers.utils.parseEther(amountInETH.toString()); // ETH = 18 decimals
+function toRaw(amount, decimals = 18) {
+  return ethers.utils.parseUnits(amount.toString(), decimals);
+}
 
-  const params = {
-    tokenIn: WETH_ADDRESS,
-    tokenOut: USDC_ADDRESS,
-    fee: 3000,
-    recipient: wallet.address,
-    deadline: Math.floor(Date.now() / 1000) + 60 * 5,
-    amountIn,
-    amountOutMinimum: 0,
-    sqrtPriceLimitX96: 0,
-  };
+function getDeadline() {
+  return Math.floor(Date.now() / 1000) + DEADLINE_BUFFER;
+}
 
-  const tx = await swapRouter.exactInputSingle(params, {
-    gasLimit: 300000,
+async function buildTrade({
+  pool,
+  inputAmountRaw,
+  tokenIn,
+  tokenOut,
+  tradeType = TradeType.EXACT_INPUT,
+}) {
+  const inputAmount = CurrencyAmount.fromRawAmount(tokenIn, JSBI.BigInt(inputAmountRaw));
+  const route = new Route([pool], tokenIn, tokenOut);
+  const trade = Trade.createUncheckedTrade({
+    route,
+    inputAmount,
+    outputAmount: CurrencyAmount.fromRawAmount(
+      tokenOut,
+      JSBI.BigInt(pool.getOutputAmount(inputAmount)[0].quotient)
+    ),
+    tradeType,
   });
-
-  console.log(`🔴 Swapping ETH → USDC: TX Hash: ${tx.hash}`);
-  await tx.wait();
+  return trade;
 }
 
 module.exports = {
-  buyETH,
-  sellETH,
+  USDC_ADDRESS,
+  WETH_ADDRESS,
+  SWAP_ROUTER_ADDRESS,
+  SLIPPAGE_TOLERANCE,
+  getDeadline,
+  toReadable,
+  toRaw,
+  buildTrade,
 };
