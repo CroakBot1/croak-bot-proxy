@@ -1,69 +1,44 @@
-// executor.js (CommonJS fixed version for Node.js)
-const { JsonRpcProvider, Wallet, Contract } = require('ethers');
-const logger = require('./logger');
+// executor.js – FIXED FOR ethers v6.x compatibility
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET_ADDRESS = process.env.WALLET;
-const RPC_URL = 'https://mainnet.base.org';
+const { ethers } = require('ethers');
+require('dotenv').config();
+const { PRIVATE_KEY, RPC_URL } = process.env;
 
-const provider = new JsonRpcProvider(RPC_URL);
-const wallet = new Wallet(PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// UniswapV2 router contract (Base chain - change if needed)
-const routerAddress = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86';
-const routerABI = [
-  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)',
-  'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)',
-  'function WETH() external pure returns (address)',
-];
+async function executeTrade(type, tokenIn, tokenOut, amountIn) {
+  console.log(`🟡 Executing ${type} trade...`);
 
-const router = new Contract(routerAddress, routerABI, wallet);
+  try {
+    const routerAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap V3 Router
+    const routerAbi = [
+      'function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'
+    ];
 
-async function buyETH() {
-  try {
-    const amountInETH = '0.001'; // Change your buy amount
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5;
+    const routerContract = new ethers.Contract(routerAddress, routerAbi, wallet);
 
-    const WETH = await router.WETH();
-    const path = [WETH, WALLET_ADDRESS]; // Replace with desired token address
+    const params = {
+      tokenIn,
+      tokenOut,
+      fee: 3000, // 0.3%
+      recipient: await wallet.getAddress(),
+      deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+      amountIn: ethers.parseUnits(amountIn.toString(), 18),
+      amountOutMinimum: 0,
+      sqrtPriceLimitX96: 0
+    };
 
-    const tx = await router.swapExactETHForTokens(
-      0, // amountOutMin: accept any amount
-      path,
-      wallet.address,
-      deadline,
-      { value: ethers.utils.parseEther(amountInETH) }
-    );
+    const tx = await routerContract.exactInputSingle(params, {
+      value: ethers.parseEther('0') // send ETH only if tokenIn is ETH
+    });
 
-    logger.success(`🟢 BUY EXECUTED: ${tx.hash}`);
-  } catch (err) {
-    logger.error('❌ Error during BUY execution:', err.message);
-  }
+    console.log(`✅ Trade sent: ${tx.hash}`);
+    await tx.wait();
+    console.log('🎉 Trade confirmed!');
+  } catch (err) {
+    console.error('❌ Error executing trade:', err.message);
+  }
 }
 
-async function sellETH() {
-  try {
-    const amountIn = ethers.utils.parseEther('0.001'); // Replace with your amount
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5;
-
-    const WETH = await router.WETH();
-    const path = [WALLET_ADDRESS, WETH]; // Replace with desired token address
-
-    const tx = await router.swapExactTokensForETH(
-      amountIn,
-      0, // amountOutMin: accept any amount
-      path,
-      wallet.address,
-      deadline
-    );
-
-    logger.success(`🔴 SELL EXECUTED: ${tx.hash}`);
-  } catch (err) {
-    logger.error('❌ Error during SELL execution:', err.message);
-  }
-}
-
-module.exports = {
-  buyETH,
-  sellETH,
-};
+module.exports = { executeTrade };
