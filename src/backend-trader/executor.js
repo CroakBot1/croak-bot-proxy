@@ -1,4 +1,5 @@
 // executor.js
+
 require('dotenv').config();
 const { ethers } = require('ethers');
 const {
@@ -22,9 +23,11 @@ const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, abi, signer);
 
-// Swap Function
 async function executeSwap({ amountIn, tokenIn, tokenOut, recipient = WALLET, slippage = SLIPPAGE_TOLERANCE }) {
   try {
+    console.log(`[🧠 EXEC SWAP] Wallet: ${signer.address}`);
+    console.log(`[🧪 Params] ${tokenIn} ➡️ ${tokenOut} | Amount: ${amountIn} | Slippage: ${slippage}`);
+
     const decimals = tokenIn === USDC_ADDRESS ? 6 : 18;
     const amountInRaw = toRaw(amountIn, decimals);
 
@@ -35,7 +38,7 @@ async function executeSwap({ amountIn, tokenIn, tokenOut, recipient = WALLET, sl
       recipient,
       deadline: getDeadline(),
       amountIn: amountInRaw,
-      amountOutMinimum: 0, // Note: you can implement slippage calculation manually
+      amountOutMinimum: 0, // Improve later for actual slippage logic
       sqrtPriceLimitX96: 0,
     };
 
@@ -49,7 +52,7 @@ async function executeSwap({ amountIn, tokenIn, tokenOut, recipient = WALLET, sl
     console.log(`[✅] Confirmed: ${receipt.transactionHash}`);
     return receipt;
   } catch (err) {
-    console.error(`[❌ ERROR] Swap failed:`, err.message || err);
+    console.error(`[❌ ERROR] Swap failed:`, err);
     return null;
   }
 }
