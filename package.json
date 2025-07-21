@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "CROAK BOT 24/7 Live Trading Execution using Express server",
   "main": "src/backend-trader/index.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "node src/backend-trader/index.js"
+    "start": "node src/backend-trader/index.js",
+    "dev": "nodemon src/backend-trader/index.js"
   },
   "keywords": [
     "croak",
@@ -13,7 +15,10 @@
     "express",
     "gateway",
     "bybit",
-    "crypto"
+    "crypto",
+    "ethereum",
+    "uniswap",
+    "base-chain"
   ],
   "author": "Agawon",
   "license": "MIT",
@@ -23,5 +28,8 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "ethers": "^6.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
   }
 }
