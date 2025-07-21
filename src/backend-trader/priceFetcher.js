@@ -2,15 +2,26 @@ const axios = require('axios');
 
 async function fetchPrice() {
   try {
-    const res = await axios.get('https://api.bybit.com/v5/market/tickers?category=linear');
-    const tickers = res.data.result.list;
-    const eth = tickers.find(t => t.symbol === 'ETHUSDT');
-    const price = parseFloat(eth.lastPrice);
+    const url = 'https://api.bybit.com/v5/market/tickers?category=linear';
+    const { data } = await axios.get(url);
 
-    console.log('[📡 FETCHED PRICE]', price);  // ← Important log
+    if (!data || !data.result || !data.result.list) {
+      console.error('[❌ PRICE FETCH ERROR] Invalid response structure.');
+      return null;
+    }
+
+    const eth = data.result.list.find(t => t.symbol === 'ETHUSDT');
+
+    if (!eth || !eth.lastPrice) {
+      console.error('[❌ PRICE FETCH ERROR] ETHUSDT not found.');
+      return null;
+    }
+
+    const price = parseFloat(eth.lastPrice);
+    console.log('[📡 FETCHED PRICE]', price);
     return price;
   } catch (err) {
-    console.error('[❌ PRICE FETCH ERROR]', err.message);
+    console.error('[❌ PRICE FETCH ERROR]', err.message || err);
     return null;
   }
 }
