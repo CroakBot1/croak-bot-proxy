@@ -1,87 +1,107 @@
 // executor.js
+
 require('dotenv').config();
-const { ethers } = require('ethers');
-const axios = require('axios');
+const { ethers } = require("ethers");
+const axios = require("axios");
 
 // ENV
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET_ADDRESS = process.env.WALLET;
+const WALLET = process.env.WALLET;
 
-// RPC + Uniswap BASE Router
-const RPC_URL = 'https://mainnet.base.org'; // BASE MAINNET
-const ROUTER_ADDRESS = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Uniswap V2 BASE Router
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006'; // ETH on BASE
-const USDC_ADDRESS = '0xd9AA094d0D7bD0Af9e3C0c5a5821EbE777AfaeD7'; // USDC on BASE
+// Base Chain RPC
+const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const routerAbi = [
-  'function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)',
-  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)',
-  'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
-  'function approve(address spender, uint256 amount) external returns (bool)'
+// Uniswap Router on Base
+const UNISWAP_ROUTER = "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86";
+const router = new ethers.Contract(
+  UNISWAP_ROUTER,
+  [
+    "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory)",
+    "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory)"
+  ],
+  signer
+);
+
+// USDC address on Base
+const USDC = "0xd9AA94D7E1696DAA0d84DC2e133D08c7387dF1f2";
+
+// Approve ERC20
+const ERC20_ABI = [
+  "function approve(address spender, uint amount) public returns (bool)",
+  "function allowance(address owner, address spender) public view returns (uint)",
+  "function balanceOf(address account) view returns (uint256)"
 ];
-const erc20Abi = [
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint)',
-  'function balanceOf(address account) external view returns (uint)'
-];
+const usdcContract = new ethers.Contract(USDC, ERC20_ABI, signer);
 
-const router = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet);
-const usdc = new ethers.Contract(USDC_ADDRESS, erc20Abi, wallet);
-
-// === BUY USDC WITH ETH ===
-async function buyUSDCWithETH(ethAmountIn) {
-  const ethAmount = ethers.utils.parseEther(ethAmountIn.toString());
-  const path = [WETH_ADDRESS, USDC_ADDRESS];
-  const amountsOut = await router.getAmountsOut(ethAmount, path);
-  const amountOutMin = amountsOut[1].mul(98).div(100); // 2% slippage
-
-  const tx = await router.swapExactETHForTokens(
-    amountOutMin,
-    path,
-    WALLET_ADDRESS,
-    Math.floor(Date.now() / 1000) + 60,
-    { value: ethAmount }
-  );
-
-  console.log(`[✅ BUY] Tx Hash: ${tx.hash}`);
-  await tx.wait();
-  console.log(`[✅ BUY] Confirmed.`);
-}
-
-// === SELL USDC FOR ETH ===
-async function sellUSDCForETH(usdcAmountIn) {
-  const usdcAmount = ethers.utils.parseUnits(usdcAmountIn.toString(), 6);
-  const allowance = await usdc.allowance(WALLET_ADDRESS, ROUTER_ADDRESS);
-  if (allowance.lt(usdcAmount)) {
-    const approveTx = await usdc.approve(ROUTER_ADDRESS, ethers.constants.MaxUint256);
-    console.log(`[⚙️ APPROVE] Tx Hash: ${approveTx.hash}`);
-    await approveTx.wait();
-    console.log(`[⚙️ APPROVE] Confirmed.`);
+async function getETHPriceUSD() {
+  try {
+    const res = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+    return res.data.ethereum.usd;
+  } catch (e) {
+    console.error("[❌ ERROR] Failed to fetch ETH price:", e.message);
+    return null;
   }
-
-  const path = [USDC_ADDRESS, WETH_ADDRESS];
-  const amountsOut = await router.getAmountsOut(usdcAmount, path);
-  const amountOutMin = amountsOut[1].mul(98).div(100); // 2% slippage
-
-  const tx = await router.swapExactTokensForETH(
-    usdcAmount,
-    amountOutMin,
-    path,
-    WALLET_ADDRESS,
-    Math.floor(Date.now() / 1000) + 60
-  );
-
-  console.log(`[✅ SELL] Tx Hash: ${tx.hash}`);
-  await tx.wait();
-  console.log(`[✅ SELL] Confirmed.`);
 }
 
-// === EXAMPLE RUN ===
-async function main() {
-  // await buyUSDCWithETH(0.001);  // Example: Buy $USDC with 0.001 ETH
-  // await sellUSDCForETH(2);      // Example: Sell 2 USDC to get ETH
+// BUY USDC with ETH
+async function buyUSDCWithETH(ethAmount) {
+  try {
+    const ethPrice = await getETHPriceUSD();
+    const usdcOutMin = ethAmount * ethPrice * 0.95; // 5% slippage buffer
+    const amountOutMin = ethers.parseUnits(usdcOutMin.toFixed(2), 6);
+
+    const tx = await router.swapExactETHForTokens(
+      amountOutMin,
+      ["0x4200000000000000000000000000000000000006", USDC], // ETH > USDC path
+      WALLET,
+      Math.floor(Date.now() / 1000) + 60,
+      { value: ethers.parseEther(ethAmount.toString()), gasLimit: 250000 }
+    );
+
+    console.log(`[✅ BUY] TX sent: ${tx.hash}`);
+    await tx.wait();
+    console.log("[✅ BUY] Success!");
+  } catch (err) {
+    console.error("[❌ BUY ERROR]", err.reason || err.message);
+  }
 }
 
-main();
+// SELL USDC for ETH
+async function sellUSDCForETH(usdcAmount) {
+  try {
+    const ethPrice = await getETHPriceUSD();
+    const ethOutMin = (usdcAmount / ethPrice) * 0.95;
+    const amountOutMin = ethers.parseUnits(ethOutMin.toFixed(6), 18);
+
+    const amountIn = ethers.parseUnits(usdcAmount.toString(), 6);
+
+    const allowance = await usdcContract.allowance(WALLET, UNISWAP_ROUTER);
+    if (allowance < amountIn) {
+      const approveTx = await usdcContract.approve(UNISWAP_ROUTER, amountIn);
+      await approveTx.wait();
+      console.log("[🔓 APPROVED] USDC approved for swap.");
+    }
+
+    const tx = await router.swapExactTokensForETH(
+      amountIn,
+      amountOutMin,
+      [USDC, "0x4200000000000000000000000000000000000006"], // USDC > ETH path
+      WALLET,
+      Math.floor(Date.now() / 1000) + 60,
+      { gasLimit: 250000 }
+    );
+
+    console.log(`[✅ SELL] TX sent: ${tx.hash}`);
+    await tx.wait();
+    console.log("[✅ SELL] Success!");
+  } catch (err) {
+    console.error("[❌ SELL ERROR]", err.reason || err.message);
+  }
+}
+
+// Export functions for trader.js
+module.exports = {
+  buyUSDCWithETH,
+  sellUSDCForETH
+};
