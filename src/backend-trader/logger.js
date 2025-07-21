@@ -28,6 +28,12 @@ function heartbeat(msg = "💓 CROAK Loop is alive") {
   console.log(`[${timestamp()}] [💓 HEARTBEAT] ${msg}`);
 }
 
+// ✅ NEW: Trade execution log
+function executed(action, price, txHash = '') {
+  const tag = action === 'buy' ? '🟢 BUY EXECUTED' : '🔴 SELL EXECUTED';
+  console.log(`[${timestamp()}] [${tag}] at $${price} ${txHash ? `| tx: ${txHash}` : ''}`);
+}
+
 module.exports = {
   info,
   warn,
@@ -35,4 +41,5 @@ module.exports = {
   success,
   debug,
   heartbeat,
+  executed, // ✅ Exported cleanly
 };
