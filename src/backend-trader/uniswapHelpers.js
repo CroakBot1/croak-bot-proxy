@@ -1,44 +1,69 @@
-// uniswapHelpers.js
 const { ethers } = require('ethers');
-const IUniswapV3PoolABI = require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json').abi;
-const IUniswapRouterABI = require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json').abi;
+const {
+  abi: IUniswapV3PoolABI,
+} = require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json');
+const {
+  abi: swapRouterABI,
+} = require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json');
 
-const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
+const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org'); // Base mainnet
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-async function getPoolImmutables(provider, tokenA, tokenB) {
-  const factory = new ethers.Contract(
-    '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Uniswap V3 Factory
-    ['function getPool(address,address,uint24) view returns (address)'],
-    provider
-  );
+// === CONSTANTS ===
+const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap v3 router
+const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // USDC
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006'; // WETH on Base
 
-  const fee = 3000;
-  const poolAddress = await factory.getPool(tokenA.address, tokenB.address, fee);
+// === CONTRACTS ===
+const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, swapRouterABI, wallet);
 
-  return {
-    poolAddress,
-    fee
+// === HELPERS ===
+
+async function buyETH(amountInUSDC) {
+  const amountIn = ethers.utils.parseUnits(amountInUSDC.toString(), 6); // USDC = 6 decimals
+
+  const params = {
+    tokenIn: USDC_ADDRESS,
+    tokenOut: WETH_ADDRESS,
+    fee: 3000, // 0.3%
+    recipient: wallet.address,
+    deadline: Math.floor(Date.now() / 1000) + 60 * 5,
+    amountIn,
+    amountOutMinimum: 0,
+    sqrtPriceLimitX96: 0,
   };
+
+  const tx = await swapRouter.exactInputSingle(params, {
+    gasLimit: 300000,
+  });
+
+  console.log(`🟢 Swapping USDC → ETH: TX Hash: ${tx.hash}`);
+  await tx.wait();
 }
 
-async function getPoolState(provider, poolAddress) {
-  const poolContract = new ethers.Contract(poolAddress, IUniswapV3PoolABI, provider);
-  const slot = await poolContract.slot0();
-  const liquidity = await poolContract.liquidity();
-  return {
-    sqrtPriceX96: slot[0],
-    liquidity,
-    tick: slot[1]
-  };
-}
+async function sellETH(amountInETH) {
+  const amountIn = ethers.utils.parseEther(amountInETH.toString()); // ETH = 18 decimals
 
-function getSwapRouterContract(wallet) {
-  return new ethers.Contract(SWAP_ROUTER_ADDRESS, IUniswapRouterABI, wallet);
+  const params = {
+    tokenIn: WETH_ADDRESS,
+    tokenOut: USDC_ADDRESS,
+    fee: 3000,
+    recipient: wallet.address,
+    deadline: Math.floor(Date.now() / 1000) + 60 * 5,
+    amountIn,
+    amountOutMinimum: 0,
+    sqrtPriceLimitX96: 0,
+  };
+
+  const tx = await swapRouter.exactInputSingle(params, {
+    gasLimit: 300000,
+  });
+
+  console.log(`🔴 Swapping ETH → USDC: TX Hash: ${tx.hash}`);
+  await tx.wait();
 }
 
 module.exports = {
-  getPoolImmutables,
-  getPoolState,
-  getSwapRouterContract
+  buyETH,
+  sellETH,
 };
-
