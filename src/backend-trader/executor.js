@@ -1,89 +1,76 @@
-// src/backend-trader/executor.js
+// executor.js
 
-require('dotenv').config();
 const { ethers } = require('ethers');
-const logger = require('./logger');
-const erc20ABI = require('./abi/erc20.json');
-const routerABI = require('./abi/uniswapRouter.json');
 
-// === Config ===
-const RPC_URL = process.env.BASE_RPC;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET_ADDRESS = process.env.WALLET;
-const UNISWAP_ROUTER_ADDRESS = '0x5615CDAb10dc425a742d643d949a7F474C01abc4'; // Uniswap V3 on Base
+// ✅ ERC20 ABI (inline)
+const erc20ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function balanceOf(address account) external view returns (uint256)"
+];
 
-// === Tokens ===
-const WETH = '0x4200000000000000000000000000000000000006';
-const USDC = '0xd9AA94D7eC644F6209BFb29b9763B1A39694ec23';
+// ✅ Uniswap Router ABI (inline)
+const uniswapRouterABI = [
+  "function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)",
+  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"
+];
 
-// === Setup ===
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, routerABI, wallet);
+// ✅ CONFIG (Update ni with your values)
+const RPC_URL = 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
+const PRIVATE_KEY = 'YOUR_PRIVATE_KEY'; // ⚠️ NEVER share this
+const ROUTER_ADDRESS = '0xUniswapRouterAddress'; // Example: UniswapV2
+const TOKEN_IN = '0xTokenInAddress';   // e.g., USDT
+const TOKEN_OUT = '0xTokenOutAddress'; // e.g., WETH
+const AMOUNT_IN = '10'; // in human-readable units (e.g., 10 USDT)
 
-// === Approve Token If Needed ===
-async function approveTokenIfNeeded(token, amount, spender) {
-  const contract = new ethers.Contract(token, erc20ABI, wallet);
-  const allowance = await contract.allowance(WALLET_ADDRESS, spender);
-  if (allowance.lt(amount)) {
-    logger.info(`🔓 Approving ${ethers.utils.formatUnits(amount)} of ${token}...`);
-    const tx = await contract.approve(spender, ethers.constants.MaxUint256);
-    await tx.wait();
-    logger.success(`✅ Approved ${token}`);
-  }
-}
+(async () => {
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// === Execute Swap ===
-async function executeSwap({ tokenIn, tokenOut, amountIn, slippage = 0.5 }) {
+  const tokenIn = new ethers.Contract(TOKEN_IN, erc20ABI, wallet);
+  const router = new ethers.Contract(ROUTER_ADDRESS, uniswapRouterABI, wallet);
+
   try {
-    logger.info(`🔁 Swapping ${amountIn} ${tokenIn} → ${tokenOut}`);
+    const decimals = await tokenIn.decimals();
+    const amountInWei = ethers.parseUnits(AMOUNT_IN, decimals);
 
-    const inputToken = new ethers.Contract(tokenIn, erc20ABI, wallet);
-    const decimals = await inputToken.decimals();
-    const amountInWei = ethers.utils.parseUnits(amountIn.toString(), decimals);
+    // ✅ Step 1: Approve if needed
+    const allowance = await tokenIn.allowance(wallet.address, ROUTER_ADDRESS);
+    if (allowance < amountInWei) {
+      console.log('🔓 Approving token...');
+      const tx = await tokenIn.approve(ROUTER_ADDRESS, ethers.MaxUint256);
+      await tx.wait();
+      console.log('✅ Approved.');
+    } else {
+      console.log('🔒 Already approved.');
+    }
 
-    await approveTokenIfNeeded(tokenIn, amountInWei, UNISWAP_ROUTER_ADDRESS);
+    // ✅ Step 2: Get estimated amountOut
+    const path = [TOKEN_IN, TOKEN_OUT];
+    const amountsOut = await router.getAmountsOut(amountInWei, path);
+    const amountOutMin = amountsOut[1] * 0.98n; // 2% slippage
 
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5;
+    console.log(`📈 Expected output: ${ethers.formatUnits(amountsOut[1], decimals)}`);
 
-    const amountsOut = await router.getAmountsOut(amountInWei, [tokenIn, tokenOut]);
-    const amountOutMin = amountsOut[1].mul(100 - slippage * 100).div(100);
-
+    // ✅ Step 3: Execute the swap
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 5; // 5 minutes
     const tx = await router.swapExactTokensForTokens(
       amountInWei,
       amountOutMin,
-      [tokenIn, tokenOut],
-      WALLET_ADDRESS,
-      deadline
+      path,
+      wallet.address,
+      deadline,
+      {
+        gasLimit: 300000
+      }
     );
+    const receipt = await tx.wait();
+    console.log('✅ Swap successful:', receipt.transactionHash);
 
-    logger.success(`🚀 TX sent: ${tx.hash}`);
-    await tx.wait();
-    logger.success(`✅ Swap confirmed`);
   } catch (err) {
-    logger.error(`❌ Swap failed: ${err.message || err}`);
+    console.error('❌ ERROR:', err.message || err);
   }
-}
-
-// === Buy/Sell ===
-async function buyETH(amount = '0.01') {
-  return await executeSwap({
-    tokenIn: USDC,
-    tokenOut: WETH,
-    amountIn: amount
-  });
-}
-
-async function sellETH(amount = '0.01') {
-  return await executeSwap({
-    tokenIn: WETH,
-    tokenOut: USDC,
-    amountIn: amount
-  });
-}
-
-module.exports = {
-  executeSwap,
-  buyETH,
-  sellETH
-};
+})();
