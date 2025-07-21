@@ -7,3 +7,6 @@ git push
 git add src/backend-trader/abi/erc20.json
 git commit -m "Add missing erc20.json ABI"
 git push
+git add .
+git commit -m "Fix: Completed amountOutMin assignment"
+git push
