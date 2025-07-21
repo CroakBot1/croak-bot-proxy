@@ -1,105 +1,97 @@
-// executor.js – Clean ETH ⇄ USDC swap executor for Uniswap on Base chain
-require('dotenv').config();
-const { ethers } = require('ethers');
+const { ethers } = require("ethers"); // ✅ Correct import for ethers v5
 
-// === ENVIRONMENT SETUP ===
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET_ADDRESS = process.env.WALLET;
+// 👉 Your Base chain RPC provider
 const provider = new ethers.providers.JsonRpcProvider("https://mainnet.base.org");
+
+// 👉 Replace with your real private key
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "0xYOUR_PRIVATE_KEY";
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// === UNISWAP ROUTER (Base Mainnet) ===
-const UNISWAP_ROUTER = "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86";
-const routerAbi = [
-  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory amounts)",
-  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)",
-  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory amounts)",
-  "function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"
-];
+// 👉 Uniswap Router + Token addresses
+const UNISWAP_ROUTER = "0x327Df1E6de05895d2ab08513aaDD9313Fe505d86"; // Base Uniswap v3 router
+const USDC = "0xd9aa36f3b9a0a78c63e9f3b44ec1c6e12f6f0fe6"; // Example USDC address
+const ETH = "0x4200000000000000000000000000000000000006"; // WETH on Base
 
-const router = new ethers.Contract(UNISWAP_ROUTER, routerAbi, wallet);
-
-// === TOKEN ADDRESSES (Base Mainnet) ===
-const WETH = "0x4200000000000000000000000000000000000006";
-const USDC = "0xd9aa7a6Af7bF8F6F3E4d3eEFA2E6fEb6587e3Ba0"; // USDC (Base)
-
-const usdcAbi = [
+// 👉 ERC20 ABI (Minimal)
+const ERC20_ABI = [
   "function approve(address spender, uint amount) public returns (bool)",
-  "function allowance(address owner, address spender) public view returns (uint)",
-  "function balanceOf(address account) external view returns (uint256)",
-  "function decimals() view returns (uint8)"
+  "function balanceOf(address owner) public view returns (uint)",
+  "function allowance(address owner, address spender) public view returns (uint)"
 ];
 
-const usdc = new ethers.Contract(USDC, usdcAbi, wallet);
+// 👉 Uniswap ABI (Minimal)
+const UNISWAP_ABI = [
+  "function exactInputSingle(tuple(address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96)) external payable returns (uint256 amountOut)"
+];
 
-// === UTILITY: Get ETH → USDC quote ===
-async function getPriceETHtoUSDC(amountInEth) {
-  const amountIn = ethers.utils.parseEther(amountInEth.toString());
-  const path = [WETH, USDC];
-  const amounts = await router.getAmountsOut(amountIn, path);
-  return ethers.utils.formatUnits(amounts[1], 6); // USDC has 6 decimals
-}
+const router = new ethers.Contract(UNISWAP_ROUTER, UNISWAP_ABI, wallet);
 
-// === BUY FUNCTION: Swap ETH → USDC ===
-async function buyUSDCwithETH(amountInEth) {
-  const amountIn = ethers.utils.parseEther(amountInEth.toString());
-  const path = [WETH, USDC];
-  const deadline = Math.floor(Date.now() / 1000) + 60;
+async function swapETHtoUSDC(amountInETH) {
+  const amountInWei = ethers.utils.parseEther(amountInETH.toString());
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10; // 10 minutes
 
-  const minOut = await router.getAmountsOut(amountIn, path);
-  const amountOutMin = minOut[1].mul(98).div(100); // 2% slippage buffer
-
-  const tx = await router.swapExactETHForTokens(
-    amountOutMin,
-    path,
-    WALLET_ADDRESS,
+  const tx = await router.exactInputSingle({
+    tokenIn: ETH,
+    tokenOut: USDC,
+    fee: 3000,
+    recipient: wallet.address,
     deadline,
-    { value: amountIn }
-  );
+    amountIn: amountInWei,
+    amountOutMinimum: 0,
+    sqrtPriceLimitX96: 0
+  }, { value: amountInWei });
 
-  console.log("🟢 Buying USDC... TX:", tx.hash);
+  console.log("Swapped ETH → USDC, TX:", tx.hash);
   await tx.wait();
-  console.log("✅ Swap Complete");
 }
 
-// === SELL FUNCTION: Swap USDC → ETH ===
-async function sellUSDCforETH(amountInUSDC) {
-  const amountIn = ethers.utils.parseUnits(amountInUSDC.toString(), 6);
-  const path = [USDC, WETH];
-  const deadline = Math.floor(Date.now() / 1000) + 60;
+async function swapUSDCtoETH(amountInUSDC) {
+  const usdc = new ethers.Contract(USDC, ERC20_ABI, wallet);
+  const decimals = 6;
+  const amountIn = ethers.utils.parseUnits(amountInUSDC.toString(), decimals);
+  const allowance = await usdc.allowance(wallet.address, UNISWAP_ROUTER);
 
-  // Approve router if needed
-  const allowance = await usdc.allowance(WALLET_ADDRESS, UNISWAP_ROUTER);
   if (allowance.lt(amountIn)) {
-    const approveTx = await usdc.approve(UNISWAP_ROUTER, amountIn);
-    console.log("🔁 Approving USDC for Uniswap...");
-    await approveTx.wait();
+    console.log("Approving USDC...");
+    await (await usdc.approve(UNISWAP_ROUTER, ethers.constants.MaxUint256)).wait();
   }
 
-  const minOut = await router.getAmountsOut(amountIn, path);
-  const amountOutMin = minOut[1].mul(98).div(100); // 2% slippage buffer
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-  const tx = await router.swapExactTokensForETH(
+  const tx = await router.exactInputSingle({
+    tokenIn: USDC,
+    tokenOut: ETH,
+    fee: 3000,
+    recipient: wallet.address,
+    deadline,
     amountIn,
-    amountOutMin,
-    path,
-    WALLET_ADDRESS,
-    deadline
-  );
+    amountOutMinimum: 0,
+    sqrtPriceLimitX96: 0
+  });
 
-  console.log("🔴 Selling USDC... TX:", tx.hash);
+  console.log("Swapped USDC → ETH, TX:", tx.hash);
   await tx.wait();
-  console.log("✅ Swap Complete");
 }
 
-// === MAIN TEST ===
+// === AUTO TRIGGER SAMPLE (BOTH SWAP WAYS) ===
+// You can replace this with conditions from 61K Brain etc.
+
 async function main() {
-  console.log("🌐 Wallet:", await wallet.getAddress());
-  const price = await getPriceETHtoUSDC(0.01);
-  console.log("💱 0.01 ETH ≈", price, "USDC");
+  const ethBalance = await provider.getBalance(wallet.address);
+  const usdc = new ethers.Contract(USDC, ERC20_ABI, provider);
+  const usdcBalance = await usdc.balanceOf(wallet.address);
 
-  // await buyUSDCwithETH(0.01); // Uncomment to BUY
-  // await sellUSDCforETH(10);   // Uncomment to SELL
+  console.log("ETH:", ethers.utils.formatEther(ethBalance));
+  console.log("USDC:", ethers.utils.formatUnits(usdcBalance, 6));
+
+  // 🔁 Example condition
+  if (ethBalance.gt(ethers.utils.parseEther("0.01"))) {
+    await swapETHtoUSDC("0.005");
+  } else if (usdcBalance.gt(ethers.utils.parseUnits("10", 6))) {
+    await swapUSDCtoETH("5");
+  } else {
+    console.log("Not enough balance to swap");
+  }
 }
 
-main();
+main().catch(console.error);
