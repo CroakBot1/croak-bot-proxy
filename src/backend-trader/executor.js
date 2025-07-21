@@ -1,57 +1,53 @@
 // executor.js
-const axios = require('axios');
-const ethers = require('ethers');
+const { ethers } = require('ethers');
+
+// 🔐 ENV setup
 require('dotenv').config();
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const WALLET = process.env.WALLET;
 
+// 🛠️ Provider (Base Mainnet)
 const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-// 0x Swap API endpoint (Base network)
-const API_URL = 'https://base.api.0x.org/swap/v1/quote';
+// 🧠 Wallet instance
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-const TOKENS = {
-  USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',  // Replace with Base USDC if needed
-  WETH: '0x4200000000000000000000000000000000000006'
-};
+// ✅ Example buy function on Uniswap v2-style router
+const ROUTER_ADDRESS = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Example: BaseSwap
+const ROUTER_ABI = [
+  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory)'
+];
 
-async function executeSwap(fromToken, toToken, amount, slippage = 1.0) {
+const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, wallet);
+
+// 🐸 BUY function
+async function buyToken(tokenAddress, ethAmountIn) {
   try {
-    const amountInWei = ethers.utils.parseUnits(amount.toString(), 6); // For USDC (6 decimals)
+    const path = ['0x4200000000000000000000000000000000000006', tokenAddress]; // WETH -> token
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 5; // 5 min
 
-    const response = await axios.get(API_URL, {
-      params: {
-        buyToken: toToken,
-        sellToken: fromToken,
-        sellAmount: amountInWei.toString(),
-        takerAddress: wallet.address,
-        slippagePercentage: slippage / 100,
-      },
-    });
+    const tx = await router.swapExactETHForTokens(
+      0, // amountOutMin: slippage protection can be added
+      path,
+      WALLET,
+      deadline,
+      {
+        value: ethers.utils.parseEther(ethAmountIn),
+        gasLimit: 300000
+      }
+    );
 
-    const { to, data, value, gas } = response.data;
-
-    const tx = await wallet.sendTransaction({
-      to,
-      data,
-      value: ethers.BigNumber.from(value || '0'),
-      gasLimit: ethers.BigNumber.from(gas || '500000'),
-    });
-
-    console.log(`🔄 Swap Tx Sent: ${tx.hash}`);
-    await tx.wait();
-    console.log(`✅ Swap Confirmed: ${tx.hash}`);
+    console.log('[✅ TX SENT]', tx.hash);
+    const receipt = await tx.wait();
+    console.log('[🎉 TX CONFIRMED]', receipt.transactionHash);
   } catch (err) {
-    console.error('❌ Swap Failed:', err.message);
+    console.error('[❌ TX ERROR]', err);
   }
 }
 
+// Example call
+// buyToken('0xYourTokenHere', '0.01');
+
 module.exports = {
-  buy: async (amountInUSDC) => {
-    console.log(`🚀 Buying ETH with ${amountInUSDC} USDC`);
-    await executeSwap(TOKENS.USDC, TOKENS.WETH, amountInUSDC);
-  },
-  sell: async (amountInUSDC) => {
-    console.log(`💰 Selling ETH for ${amountInUSDC} USDC`);
-    await executeSwap(TOKENS.WETH, TOKENS.USDC, amountInUSDC);
-  }
+  buyToken
 };
