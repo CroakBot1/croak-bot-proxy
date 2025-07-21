@@ -1,33 +1,53 @@
 // trader.js
-const fetchPrice = require('./priceFetcher');
-const { shouldBuy, shouldSell } = require('./brain');
-const logger = require('./logger');
-const executor = require('./executor');
+require('dotenv').config();
+const { WETH_ADDRESS, USDC_ADDRESS } = require('./uniswapHelpers');
+const { executeSwap } = require('./executor');
 
-async function checkPriceAndTrade() {
-  try {
-    const price = await fetchPrice();
-    if (!price) {
-      logger.error('📉 Failed to fetch ETH price');
-      return;
-    }
+const WALLET = process.env.WALLET;
 
-    logger.info(`📈 Live ETH price: $${price}`);
-
-    if (shouldBuy(price)) {
-      logger.success(`🟢 BUY SIGNAL triggered at $${price}`);
-      await executor.buyETH(); // <-- execute via executor
-    } else if (shouldSell(price)) {
-      logger.warn(`🔴 SELL SIGNAL triggered at $${price}`);
-      await executor.sellETH(); // <-- execute via executor
-    } else {
-      logger.debug(`🟡 No trade action at $${price} – Monitoring…`);
-    }
-  } catch (err) {
-    logger.error('📛 Error in trade logic or execution:', err.message);
-  }
+// Simple strategy trigger
+async function tradeETHtoUSDC(amountInEth) {
+  console.log(`🚀 Initiating ETH ➡️ USDC swap: ${amountInEth} ETH`);
+  return await executeSwap({
+    amountIn: amountInEth,
+    tokenIn: WETH_ADDRESS,
+    tokenOut: USDC_ADDRESS,
+    recipient: WALLET,
+  });
 }
 
+async function tradeUSDCtoETH(amountInUSDC) {
+  console.log(`🚀 Initiating USDC ➡️ ETH swap: ${amountInUSDC} USDC`);
+  return await executeSwap({
+    amountIn: amountInUSDC,
+    tokenIn: USDC_ADDRESS,
+    tokenOut: WETH_ADDRESS,
+    recipient: WALLET,
+  });
+}
+
+// Optional example: Simple CLI trigger
+async function run() {
+  const direction = process.argv[2]; // 'buy' or 'sell'
+  const amount = process.argv[3]; // amount in ETH or USDC
+
+  if (!direction || !amount) {
+    console.log('❗ Usage: node trader.js [buy|sell] [amount]');
+    return;
+  }
+
+  if (direction === 'buy') {
+    await tradeUSDCtoETH(amount);
+  } else if (direction === 'sell') {
+    await tradeETHtoUSDC(amount);
+  } else {
+    console.log('❌ Invalid direction. Use "buy" or "sell".');
+  }
+}
+
+run();
+
 module.exports = {
-  checkPriceAndTrade,
+  tradeETHtoUSDC,
+  tradeUSDCtoETH,
 };
