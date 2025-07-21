@@ -1,12 +1,15 @@
 // signal.js
 
-/**
- * Generates trading signal based on basic momentum logic.
- *
- * @param {number} price - Current price
- * @param {object} state - Custom state tracker (e.g., memory, trends)
- * @returns {string} "buy", "sell", or "hold"
- */
+let currentSignal = null;
+
+function setSignal(signal) {
+  currentSignal = signal;
+}
+
+function getStoredSignal() {
+  return currentSignal;
+}
+
 function getSignal(price, state = {}) {
   const lastPrice = state.lastPrice || 0;
 
@@ -15,4 +18,8 @@ function getSignal(price, state = {}) {
   return 'hold';
 }
 
-module.exports = { getSignal };
+module.exports = {
+  getSignal,
+  setSignal,
+  getStoredSignal,
+};
