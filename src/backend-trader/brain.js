@@ -1,72 +1,83 @@
-// 🧠 CROAK BOT V5 – Full Brain Module
-// Handles trade decisions based on price, traps, memory, and multi-layer signals
+// src/backend-trader/brain.js
+const priceFetcher = require('./priceFetcher');
+const logger = require('./logger');
 
-const brainMemory = {
-  lastSignal: null,
-  confidenceScore: 0,
-  scoreHistory: [],
-  recentPrices: [],
-  trapDetected: false,
-};
+let brainMemoryScore = 50; // initial neutral score (0–100 scale)
 
-function updateMemory(score) {
-  brainMemory.confidenceScore = score;
-  brainMemory.scoreHistory.push(score);
-  if (brainMemory.scoreHistory.length > 100) {
-    brainMemory.scoreHistory.shift();
-  }
-}
-
-function detectTrap(prices) {
-  const recent = prices.slice(-5);
-  const spikes = recent.filter((v, i, a) =>
-    i > 0 && Math.abs(v - a[i - 1]) / a[i - 1] > 0.015
-  );
-  return spikes.length >= 2;
-}
-
-function getSignalFromPrice(currentPrice, prices) {
-  const len = prices.length;
-  if (len < 2) return { signal: 'hold', confidence: 0.4 };
-
-  const lastPrice = prices[len - 2];
-  const change = (currentPrice - lastPrice) / lastPrice;
-
-  if (change > 0.005) return { signal: 'buy', confidence: 0.7 };
-  if (change < -0.005) return { signal: 'sell', confidence: 0.7 };
-  return { signal: 'hold', confidence: 0.5 };
-}
-
-function analyze(price) {
-  // Push to memory
-  brainMemory.recentPrices.push(price);
-  if (brainMemory.recentPrices.length > 50) {
-    brainMemory.recentPrices.shift();
-  }
-
-  // Trap detection
-  const trap = detectTrap(brainMemory.recentPrices);
-  brainMemory.trapDetected = trap;
-
-  // Signal logic
-  const { signal, confidence } = getSignalFromPrice(price, brainMemory.recentPrices);
-
-  // Trap overrides signal
-  const finalSignal = trap ? 'hold' : signal;
-  const finalConfidence = trap ? 0.3 : confidence;
-
-  // Update memory
-  updateMemory(finalConfidence);
-  brainMemory.lastSignal = finalSignal;
-
-  return {
-    signal: finalSignal,
-    confidence: finalConfidence,
-    trapDetected: trap,
+function analyzeMarket({ price, trend, volume, candle }) {
+  const insights = {
+    buySignal: false,
+    sellSignal: false,
+    confidence: 0,
+    reason: '',
   };
+
+  // === LAYER 1: 61K Quantum Core Logic ===
+  if (candle.green && candle.size === 'large' && trend === 'up') {
+    insights.buySignal = true;
+    insights.confidence += 30;
+    insights.reason += '🟢 Large green candle + Uptrend\n';
+  }
+
+  if (candle.red && candle.size === 'large' && trend === 'down') {
+    insights.sellSignal = true;
+    insights.confidence += 30;
+    insights.reason += '🔴 Large red candle + Downtrend\n';
+  }
+
+  // === LAYER 2: Trap Detection ===
+  if (candle.wickTop && candle.bodySmall && trend === 'down') {
+    insights.sellSignal = true;
+    insights.confidence += 20;
+    insights.reason += '🪤 Trap detected at top (wick spike)\n';
+  }
+
+  if (candle.wickBottom && candle.bodySmall && trend === 'up') {
+    insights.buySignal = true;
+    insights.confidence += 20;
+    insights.reason += '🪤 Trap detected at bottom (wick flush)\n';
+  }
+
+  // === LAYER 3: Brain Score Memory ===
+  if (brainMemoryScore > 70) {
+    insights.buySignal = true;
+    insights.confidence += 15;
+    insights.reason += '🧠 Memory: Bullish bias\n';
+  } else if (brainMemoryScore < 30) {
+    insights.sellSignal = true;
+    insights.confidence += 15;
+    insights.reason += '🧠 Memory: Bearish bias\n';
+  }
+
+  // === Self-Correcting Layer ===
+  if (insights.confidence > 60) {
+    brainMemoryScore = Math.min(brainMemoryScore + 2, 100);
+  } else if (insights.confidence < 30) {
+    brainMemoryScore = Math.max(brainMemoryScore - 2, 0);
+  }
+
+  insights.brainMemoryScore = brainMemoryScore;
+  return insights;
+}
+
+async function getLiveBrainSignal() {
+  try {
+    const marketData = await priceFetcher.fetch();
+    const analysis = analyzeMarket(marketData);
+    logger.info('🧠 Brain Signal:', analysis);
+    return analysis;
+  } catch (err) {
+    logger.error('⚠️ Brain Error:', err.message);
+    return {
+      buySignal: false,
+      sellSignal: false,
+      confidence: 0,
+      reason: 'Error fetching market data',
+    };
+  }
 }
 
 module.exports = {
-  analyze,
-  memory: brainMemory,
+  analyzeMarket,
+  getLiveBrainSignal,
 };
