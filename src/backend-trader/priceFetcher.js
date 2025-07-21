@@ -1,9 +1,18 @@
 const axios = require('axios');
 
-async function fetchBybitPrice() {
-  const res = await axios.get('https://api.bybit.com/v2/public/tickers?symbol=ETHUSDT');
-  return parseFloat(res.data.result[0].last_price);
+async function fetchPrice() {
+  try {
+    const res = await axios.get('https://api.bybit.com/v5/market/tickers?category=linear');
+    const tickers = res.data.result.list;
+    const eth = tickers.find(t => t.symbol === 'ETHUSDT');
+    const price = parseFloat(eth.lastPrice);
+
+    console.log('[📡 FETCHED PRICE]', price);  // ← Important log
+    return price;
+  } catch (err) {
+    console.error('[❌ PRICE FETCH ERROR]', err.message);
+    return null;
+  }
 }
 
-module.exports = { fetchBybitPrice };
-
+module.exports = fetchPrice;
