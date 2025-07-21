@@ -1,53 +1,63 @@
-// executor.js
-const { ethers } = require('ethers');
+const { ethers } = require("ethers");
 
-// 🔐 ENV setup
-require('dotenv').config();
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET = process.env.WALLET;
-
-// 🛠️ Provider (Base Mainnet)
+// Setup provider (Base Mainnet)
 const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
 
-// 🧠 Wallet instance
+// Your wallet private key
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// ✅ Example buy function on Uniswap v2-style router
-const ROUTER_ADDRESS = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Example: BaseSwap
-const ROUTER_ABI = [
-  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory)'
+// Example token addresses (replace with actual)
+const TOKEN_IN = '0x...';   // e.g. ETH
+const TOKEN_OUT = '0x...';  // e.g. USDC
+
+// UniswapV2 Router address on Base (or V3 if applicable)
+const ROUTER_ADDRESS = '0x...'; // Replace with correct router
+
+// ABI for swapping (basic UniswapV2 example)
+const routerAbi = [
+  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) payable returns (uint[] memory)',
+  'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) returns (uint[] memory)',
+  'function approve(address spender, uint256 amount) external returns (bool)'
 ];
 
-const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, wallet);
+// Connect router
+const router = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet);
 
-// 🐸 BUY function
-async function buyToken(tokenAddress, ethAmountIn) {
-  try {
-    const path = ['0x4200000000000000000000000000000000000006', tokenAddress]; // WETH -> token
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5; // 5 min
+// Sample Buy (ETH → USDC)
+async function buy() {
+  const path = [TOKEN_IN, TOKEN_OUT];
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-    const tx = await router.swapExactETHForTokens(
-      0, // amountOutMin: slippage protection can be added
-      path,
-      WALLET,
-      deadline,
-      {
-        value: ethers.utils.parseEther(ethAmountIn),
-        gasLimit: 300000
-      }
-    );
+  const tx = await router.swapExactETHForTokens(
+    0, // amountOutMin
+    path,
+    wallet.address,
+    deadline,
+    { value: ethers.utils.parseEther("0.001") } // 0.001 ETH
+  );
 
-    console.log('[✅ TX SENT]', tx.hash);
-    const receipt = await tx.wait();
-    console.log('[🎉 TX CONFIRMED]', receipt.transactionHash);
-  } catch (err) {
-    console.error('[❌ TX ERROR]', err);
-  }
+  console.log("Buy TX sent:", tx.hash);
 }
 
-// Example call
-// buyToken('0xYourTokenHere', '0.01');
+// Sample Sell (USDC → ETH)
+async function sell() {
+  const path = [TOKEN_OUT, TOKEN_IN];
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-module.exports = {
-  buyToken
-};
+  const tx = await router.swapExactTokensForETH(
+    ethers.utils.parseUnits("10", 6), // Assuming USDC has 6 decimals
+    0,
+    path,
+    wallet.address,
+    deadline
+  );
+
+  console.log("Sell TX sent:", tx.hash);
+}
+
+// Example run
+(async () => {
+  await buy();
+  await sell();
+})();
