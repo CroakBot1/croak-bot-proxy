@@ -1,13 +1,18 @@
 // signal.js
 
 /**
- * Generates trading signal based on basic logic.
- * You can upgrade this with moving averages, RSI, sentiment, etc.
- *
- * @param {number} price - Current asset price
- * @param {object} state - Extra data (e.g. trend, volatility, memory)
- * @returns {string} - "buy", "sell", or "hold"
+ * Trading signal logic module.
  */
+
+let currentSignal = null; // 🧠 Store last signal for external tracking
+
+function setSignal(signal) {
+  currentSignal = signal;
+}
+
+function getStoredSignal() {
+  return currentSignal;
+}
 
 function getSignal(price, state = {}) {
   const lastPrice = state.lastPrice || 0;
@@ -18,4 +23,8 @@ function getSignal(price, state = {}) {
   return 'hold';
 }
 
-module.exports = { getSignal };
+module.exports = {
+  getSignal,
+  setSignal,
+  getStoredSignal,
+};
