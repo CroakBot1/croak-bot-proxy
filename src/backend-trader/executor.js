@@ -1,44 +1,48 @@
-// executor.js – FIXED FOR ethers v6.x compatibility
+// src/backend-trader/executor.js
 
-const { ethers } = require('ethers');
-require('dotenv').config();
-const { PRIVATE_KEY, RPC_URL } = process.env;
+const { ethers } = require("ethers");
+require("dotenv").config();
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+const RPC_URL = process.env.RPC_URL || "https://mainnet.base.org";
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const WALLET = process.env.WALLET;
 
-async function executeTrade(type, tokenIn, tokenOut, amountIn) {
-  console.log(`🟡 Executing ${type} trade...`);
-
-  try {
-    const routerAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap V3 Router
-    const routerAbi = [
-      'function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'
-    ];
-
-    const routerContract = new ethers.Contract(routerAddress, routerAbi, wallet);
-
-    const params = {
-      tokenIn,
-      tokenOut,
-      fee: 3000, // 0.3%
-      recipient: await wallet.getAddress(),
-      deadline: Math.floor(Date.now() / 1000) + 60 * 10,
-      amountIn: ethers.parseUnits(amountIn.toString(), 18),
-      amountOutMinimum: 0,
-      sqrtPriceLimitX96: 0
-    };
-
-    const tx = await routerContract.exactInputSingle(params, {
-      value: ethers.parseEther('0') // send ETH only if tokenIn is ETH
-    });
-
-    console.log(`✅ Trade sent: ${tx.hash}`);
-    await tx.wait();
-    console.log('🎉 Trade confirmed!');
-  } catch (err) {
-    console.error('❌ Error executing trade:', err.message);
-  }
+if (!PRIVATE_KEY || !WALLET) {
+  console.error("❌ Missing PRIVATE_KEY or WALLET in environment variables.");
+  process.exit(1);
 }
 
-module.exports = { executeTrade };
+const provider = new ethers.JsonRpcProvider(RPC_URL); // ethers v6 correct usage
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+
+const ABI = [
+  // Simplified ERC20 ABI
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+  "function transfer(address to, uint amount) returns (bool)"
+];
+
+async function getBalance(tokenAddress) {
+  const token = new ethers.Contract(tokenAddress, ABI, provider);
+  const balance = await token.balanceOf(WALLET);
+  const decimals = await token.decimals();
+  const symbol = await token.symbol();
+  const humanReadable = ethers.formatUnits(balance, decimals);
+  console.log(`💰 ${symbol} Balance: ${humanReadable}`);
+}
+
+async function sendTokens(tokenAddress, toAddress, amount) {
+  const token = new ethers.Contract(tokenAddress, ABI, wallet);
+  const decimals = await token.decimals();
+  const amountParsed = ethers.parseUnits(amount.toString(), decimals);
+  const tx = await token.transfer(toAddress, amountParsed);
+  console.log("🚀 Sending tokens... TX:", tx.hash);
+  await tx.wait();
+  console.log("✅ Sent!");
+}
+
+module.exports = {
+  getBalance,
+  sendTokens,
+};
