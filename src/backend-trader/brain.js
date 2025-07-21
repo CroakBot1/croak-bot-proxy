@@ -4,6 +4,7 @@ const logger = require('./logger');
 
 let brainMemoryScore = 50; // initial neutral score (0–100 scale)
 
+// Core market analysis function
 function analyzeMarket({ price, trend, volume, candle }) {
   const insights = {
     buySignal: false,
@@ -60,6 +61,49 @@ function analyzeMarket({ price, trend, volume, candle }) {
   return insights;
 }
 
+// Wrapper to get buy signal boolean
+function shouldBuy(price) {
+  // Dummy data — replace with real market info if available
+  const dummyMarketData = {
+    price,
+    trend: 'up',
+    volume: 0,
+    candle: {
+      green: true,
+      red: false,
+      size: 'large',
+      wickTop: false,
+      wickBottom: false,
+      bodySmall: false,
+    },
+  };
+  const analysis = analyzeMarket(dummyMarketData);
+  logger.debug('🧠 shouldBuy analysis:', analysis);
+  return analysis.buySignal;
+}
+
+// Wrapper to get sell signal boolean
+function shouldSell(price) {
+  // Dummy data — replace with real market info if available
+  const dummyMarketData = {
+    price,
+    trend: 'down',
+    volume: 0,
+    candle: {
+      green: false,
+      red: true,
+      size: 'large',
+      wickTop: false,
+      wickBottom: false,
+      bodySmall: false,
+    },
+  };
+  const analysis = analyzeMarket(dummyMarketData);
+  logger.debug('🧠 shouldSell analysis:', analysis);
+  return analysis.sellSignal;
+}
+
+// Optional async function to get live brain signal (if you want to expand)
 async function getLiveBrainSignal() {
   try {
     const marketData = await priceFetcher.fetch();
@@ -79,5 +123,7 @@ async function getLiveBrainSignal() {
 
 module.exports = {
   analyzeMarket,
+  shouldBuy,
+  shouldSell,
   getLiveBrainSignal,
 };
