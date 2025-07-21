@@ -1,29 +1,33 @@
+// priceFetcher.js
 const axios = require('axios');
+const logger = require('./logger');
 
-async function fetchPrice() {
+const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
+const BASE_URL = 'https://api.dexscreener.com/latest/dex/pairs/ethereum';
+
+async function getCurrentPrice() {
   try {
-    const url = 'https://api.bybit.com/v5/market/tickers?category=linear';
-    const { data } = await axios.get(url);
+    const response = await axios.get(BASE_URL);
+    const pairs = response.data.pairs;
 
-    if (!data || !data.result || !data.result.list) {
-      console.error('[❌ PRICE FETCH ERROR] Invalid response structure.');
-      return null;
+    const tokenPair = pairs.find(pair =>
+      pair.baseToken.address.toLowerCase() === TOKEN_ADDRESS.toLowerCase()
+    );
+
+    if (!tokenPair) {
+      throw new Error('Token pair not found on DexScreener.');
     }
 
-    const eth = data.result.list.find(t => t.symbol === 'ETHUSDT');
-
-    if (!eth || !eth.lastPrice) {
-      console.error('[❌ PRICE FETCH ERROR] ETHUSDT not found.');
-      return null;
-    }
-
-    const price = parseFloat(eth.lastPrice);
-    console.log('[📡 FETCHED PRICE]', price);
+    const price = parseFloat(tokenPair.priceUsd);
+    logger.info(`💲 Current price fetched: $${price}`);
     return price;
+
   } catch (err) {
-    console.error('[❌ PRICE FETCH ERROR]', err.message || err);
-    return null;
+    logger.error('❌ Failed to fetch price:', err.message);
+    throw err;
   }
 }
 
-module.exports = fetchPrice;
+module.exports = {
+  getCurrentPrice,
+};
