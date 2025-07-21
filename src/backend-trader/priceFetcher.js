@@ -1,33 +1,21 @@
-// priceFetcher.js
+// src/backend-trader/priceFetcher.js
+
 const axios = require('axios');
-const logger = require('./logger');
 
-const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
-const BASE_URL = 'https://api.dexscreener.com/latest/dex/pairs/ethereum';
-
-async function getCurrentPrice() {
+// Get latest mark price from Bybit (USDT Perpetual)
+async function fetchPrice(symbol = 'ETHUSDT') {
   try {
-    const response = await axios.get(BASE_URL);
-    const pairs = response.data.pairs;
+    const url = `https://api.bybit.com/v2/public/tickers?symbol=${symbol}`;
+    const res = await axios.get(url);
 
-    const tokenPair = pairs.find(pair =>
-      pair.baseToken.address.toLowerCase() === TOKEN_ADDRESS.toLowerCase()
-    );
+    const markPrice = parseFloat(res.data?.result?.[0]?.last_price);
+    if (isNaN(markPrice)) throw new Error('Invalid price format');
 
-    if (!tokenPair) {
-      throw new Error('Token pair not found on DexScreener.');
-    }
-
-    const price = parseFloat(tokenPair.priceUsd);
-    logger.info(`💲 Current price fetched: $${price}`);
-    return price;
-
+    return markPrice;
   } catch (err) {
-    logger.error('❌ Failed to fetch price:', err.message);
+    console.error('[❌ ERROR] ❌ Failed to fetch price:', err.message);
     throw err;
   }
 }
 
-module.exports = {
-  getCurrentPrice,
-};
+module.exports = { fetchPrice };
