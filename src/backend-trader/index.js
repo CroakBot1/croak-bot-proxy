@@ -18,8 +18,13 @@ app.get('/ping', (req, res) => {
 
 // Main trading loop – runs every 10 seconds
 setInterval(async () => {
-  await checkPriceAndTrade();
-}, 10 * 1000); // 10s interval
+  try {
+    logger.info('⏳ Running 61K strategy check...');
+    await checkPriceAndTrade(); // Executes logic from trader.js
+  } catch (error) {
+    logger.error('🔥 Trading loop error:', error.message);
+  }
+}, 10 * 1000); // Every 10 seconds
 
 // Start server
 app.listen(PORT, () => {
