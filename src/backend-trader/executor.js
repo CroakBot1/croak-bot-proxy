@@ -12,7 +12,7 @@ const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 // === TOKEN & ROUTER CONFIG ===
 const routerAddress = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // Base Uniswap Router
 const tokenIn = '0x4200000000000000000000000000000000000006'; // WETH (BASE)
-const tokenOut = '0x845Dc63f84cE1C641625579f82d9bBb5f713Ba03'; // CROAK or any token
+const tokenOut = ethers.getAddress('0x845Dc63f84cE1C641625579f82d9bBb5f713Ba03'); // Validated checksummed
 
 // === ABI: Inline Uniswap Router ===
 const uniswapRouterAbi = [
@@ -34,33 +34,35 @@ const erc20Abi = [
 const router = new ethers.Contract(routerAddress, uniswapRouterAbi, wallet);
 const tokenInContract = new ethers.Contract(tokenIn, erc20Abi, wallet);
 
-// === MAIN EXECUTION ===
-async function executeBuy() {
-  const amountInEth = '0.0005';
-  const amountInWei = ethers.parseEther(amountInEth);
+// === MAIN BUY FUNCTION ===
+async function buyETH(amountInEth = '0.0005') {
+  try {
+    const amountInWei = ethers.parseEther(amountInEth);
+    const path = [tokenIn, tokenOut];
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
 
-  const path = [tokenIn, tokenOut];
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
+    // Estimate output
+    const amounts = await router.getAmountsOut(amountInWei, path);
+    const amountOutMin = amounts[1] - (amounts[1] / BigInt(10)); // 10% slippage
 
-  // Estimate amountOut
-  const amounts = await router.getAmountsOut(amountInWei, path);
-  const amountOutMin = amounts[1] - (amounts[1] / BigInt(10)); // slippage 10%
+    console.log('[🔁] Executing swap...');
+    const tx = await router.swapExactETHForTokens(
+      amountOutMin,
+      path,
+      WALLET,
+      deadline,
+      { value: amountInWei, gasLimit: 300000 }
+    );
 
-  console.log('[🔁] Executing swap...');
-  const tx = await router.swapExactETHForTokens(
-    amountOutMin,
-    path,
-    WALLET,
-    deadline,
-    { value: amountInWei, gasLimit: 300000 }
-  );
-
-  console.log(`[✅] TX Sent: ${tx.hash}`);
-  await tx.wait();
-  console.log('[🎉] Swap Success!');
+    console.log(`[✅] TX Sent: ${tx.hash}`);
+    await tx.wait();
+    console.log('[🎉] Swap Success!');
+  } catch (err) {
+    console.error('[❌] ERROR in buyETH:', err.message);
+  }
 }
 
-// === CALL IT! ===
-executeBuy().catch((err) => {
-  console.error('[❌] ERROR:', err.message);
-});
+// === EXPORT ===
+module.exports = {
+  buyETH
+};
