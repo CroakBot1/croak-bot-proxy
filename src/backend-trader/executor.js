@@ -1,48 +1,82 @@
 // src/backend-trader/executor.js
-
-require('dotenv').config();
 const { ethers } = require('ethers');
-const logger = require('./logger');
+require('dotenv').config();
 
-const RPC_URL = process.env.RPC_URL;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET_ADDRESS = process.env.WALLET_ADDRESS;
+const UNISWAP_ROUTER_ADDRESS = '0x5615CDAb10dc425a742d643d949a7F474C01abc4'; // BASE Uniswap V3 Router
+const WETH = '0x4200000000000000000000000000000000000006'; // WETH on BASE
+const USDC = '0xd9AA94D7eC644F6209BFb29b9763B1A39694ec23'; // USDC on BASE
 
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC);
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-// 🦄 Uniswap Router (V2-style, change if using V3)
-const UNISWAP_ROUTER_ADDRESS = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'; // Mainnet
-const routerABI = require('./abi/uniswapRouter.json'); // You must add this ABI file
-const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, routerABI, wallet);
+const routerAbi = [
+  "function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)"
+];
 
-// === MAIN TRADE FUNCTION ===
-async function executeSwap({ tokenIn, tokenOut, amountIn, slippage = 0.5 }) {
+const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, routerAbi, wallet);
+
+async function executeBuy(amountInEth) {
+  const amountInWei = ethers.parseEther(amountInEth.toString());
+
+  const params = {
+    tokenIn: WETH,
+    tokenOut: USDC,
+    fee: 3000,
+    recipient: process.env.WALLET,
+    deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+    amountIn: amountInWei,
+    amountOutMinimum: 0n,
+    sqrtPriceLimitX96: 0n,
+  };
+
   try {
-    logger.info(`🔁 Preparing to swap ${amountIn} of ${tokenIn} → ${tokenOut}`);
-
-    const amountInWei = ethers.utils.parseUnits(amountIn.toString(), 18);
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 5; // 5 minutes from now
-
-    const amountsOut = await router.getAmountsOut(amountInWei, [tokenIn, tokenOut]);
-    const amountOutMin = amountsOut[1].mul(100 - slippage * 100).div(100); // Slippage protection
-
-    const tx = await router.swapExactTokensForTokens(
-      amountInWei,
-      amountOutMin,
-      [tokenIn, tokenOut],
-      WALLET_ADDRESS,
-      deadline
-    );
-
-    logger.info(`🚀 Swap TX sent: ${tx.hash}`);
+    const tx = await router.exactInputSingle(params, {
+      value: amountInWei,
+      gasLimit: 500000,
+    });
+    console.log('✅ BUY TX Sent:', tx.hash);
     await tx.wait();
-    logger.info(`✅ Swap confirmed!`);
+    console.log('🎉 BUY TX Confirmed');
   } catch (err) {
-    logger.error('❌ Swap failed:', err);
+    console.error('❌ BUY Error:', err.message);
+  }
+}
+
+async function executeSell(amountInUSDC) {
+  const amountIn = ethers.parseUnits(amountInUSDC.toString(), 6); // USDC = 6 decimals
+
+  const usdc = new ethers.Contract(USDC, [
+    "function approve(address spender, uint256 amount) public returns (bool)"
+  ], wallet);
+
+  try {
+    const approveTx = await usdc.approve(UNISWAP_ROUTER_ADDRESS, amountIn);
+    await approveTx.wait();
+    console.log('✅ Approved USDC');
+
+    const params = {
+      tokenIn: USDC,
+      tokenOut: WETH,
+      fee: 3000,
+      recipient: process.env.WALLET,
+      deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+      amountIn,
+      amountOutMinimum: 0n,
+      sqrtPriceLimitX96: 0n,
+    };
+
+    const tx = await router.exactInputSingle(params, {
+      gasLimit: 500000,
+    });
+    console.log('✅ SELL TX Sent:', tx.hash);
+    await tx.wait();
+    console.log('🎉 SELL TX Confirmed');
+  } catch (err) {
+    console.error('❌ SELL Error:', err.message);
   }
 }
 
 module.exports = {
-  executeSwap
+  executeBuy,
+  executeSell,
 };
