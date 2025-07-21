@@ -2,9 +2,9 @@
   "name": "croak-express-gateway",
   "version": "1.0.0",
   "description": "CROAK BOT 24/7 Live Trading Execution using Express server",
-  "main": "src/index.js",
+  "main": "src/backend-trader/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/backend-trader/index.js"
   },
   "keywords": [
     "croak",
