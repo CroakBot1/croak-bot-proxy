@@ -1,175 +1,76 @@
-// brain.js 🧠
-// ==============================
-// 61K QUANTUM STRATEGY CORE — ULTRA INTEGRATED VERSION
-// DO NOT REMOVE ANY SECTION WITHOUT SYSTEM CLEARANCE
+// brain.js (Frontend version)
 
-// ⛓️ Required Connections (always keep)
-const { fetchPrice } = require('./priceFetcher');
-const logger = require('./logger');
-
-// 🧠 Core Brain Variables
+// Brain Memory Score
 let brainMemoryScore = 50;
-let lastSignal = 'HOLD';
-let lastPrice = 0;
-let tpExtended = false;
-let blockBuy = false;
 
-// ===========================
-// 🔬 Utility Filters & Validators
-// ===========================
-function volumeMomentumValidator({ volume, momentum }) {
-  return volume > 70 && momentum > 65;
-}
-
-function candlePatternReader(candle) {
-  return ['bullish_engulfing', 'hammer', 'morning_star'].includes(candle.pattern);
-}
-
-function candleConfidenceScoreSystem(candle) {
-  let score = 0;
-  const patternScores = {
-    bullish_engulfing: 30,
-    hammer: 20,
-    morning_star: 25,
-  };
-  score += patternScores[candle.pattern] || 0;
-  if (candle.strongClose) score += 15;
-  if (candle.volumeSpike) score += 10;
-  return score;
-}
-
-function trapDetectionUltra(priceData) {
-  return priceData.spike || priceData.suddenDrop || priceData.fomoTrap || priceData.reversalAlert;
-}
-
-function autoDenialVetoLayer(signal, priceData, candleScore) {
-  if (signal === 'HOLD') return signal;
-  const vetoReasons = [];
-
-  const candleIsWeak = candleScore < 40;
-  const buyNotAllowed = !smartEntryFilterLayer(priceData);
-  const trapDetected = trapDetectionUltra(priceData);
-  const momentumDeny = invertedMomentumDenial(priceData);
-  const memoryWeak = brainMemoryScore < 40;
-
-  if (candleIsWeak) vetoReasons.push('Candle Reader: ❌ Weak momentum candle');
-  if (buyNotAllowed) vetoReasons.push('Smart Entry Filter: ❌ Blocked by plugin logic');
-  if (trapDetected) vetoReasons.push('Trap Detector: ⚠️ Trap signature detected');
-  if (momentumDeny) vetoReasons.push('Inverted Momentum Denial: ⚠️ Reversal risk present');
-  if (memoryWeak) vetoReasons.push(`Brain Memory Score: ${brainMemoryScore} 🟡 (Uncertain)`);
-
-  if (vetoReasons.length > 0) {
-    vetoReasons.push('Auto-Denial Veto™: BLOCKED by Final Judgment Layer');
-    logger.veto(vetoReasons);
-    return 'HOLD';
+// 🔌 Price fetcher from backend API (or your own proxy endpoint)
+async function fetchPrice(symbol = 'ETHUSDT') {
+  try {
+    const res = await fetch(`/api/price?symbol=${symbol}`);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('❌ Failed to fetch price:', err);
+    return null;
   }
-
-  return signal;
 }
 
-function tpExtenderTrillions(signal, price) {
-  if (signal === 'SELL' && !tpExtended && brainMemoryScore > 60) {
-    tpExtended = true;
-    blockBuy = true;
-    logger.info('🧱 TP EXTENDER activated: HOLD SELL for extended profit. BUY temporarily blocked.');
-    return 'HOLD';
-  } else if (signal === 'SELL' && tpExtended) {
-    tpExtended = false;
-    blockBuy = false;
-    return 'SELL';
-  }
-  return signal;
+// 🎯 Strategy Logic
+function analyzeMarket({ price, trend, volume, candle }) {
+  if (!price) return 'HOLD';
+  if (price < 2500) return 'BUY';
+  if (price > 3500) return 'SELL';
+  return 'HOLD';
 }
 
-function smartEntryFilterLayer(priceData) {
-  return priceData.trend === 'up' && volumeMomentumValidator(priceData);
-}
-
-function smartExitFilterLayer(priceData) {
-  return priceData.trend === 'down' || priceData.weakCandle;
-}
-
-function dynamicTradeFilter(priceData) {
-  return priceData.riskScore < 50 && !priceData.highLatency;
-}
-
-function hotEntryScanner(priceData) {
-  return priceData.hotEntry && candlePatternReader(priceData.candle);
-}
-
-function hotExitScanner(priceData) {
-  return priceData.hotExit || priceData.candle.reversal;
-}
-
-function reversalTrapDetector(priceData) {
-  return priceData.momentumFlip && priceData.candle.reversal;
-}
-
-function invertedMomentumDenial(priceData) {
-  return priceData.invertedMomentum || priceData.staleVolume;
-}
-
-// ===========================
-// 🧠 ANALYZE MARKET DECISION
-// ===========================
-function analyzeMarket(priceData) {
-  const candleScore = candleConfidenceScoreSystem(priceData.candle);
-  const allowBuy = smartEntryFilterLayer(priceData) && candleScore >= 40 && !blockBuy && !invertedMomentumDenial(priceData);
-  const allowSell = smartExitFilterLayer(priceData) || hotExitScanner(priceData) || candleScore < 20 || reversalTrapDetector(priceData);
-
-  let signal = 'HOLD';
-
-  if (allowBuy && dynamicTradeFilter(priceData)) {
-    signal = 'BUY';
-  } else if (allowSell) {
-    signal = 'SELL';
-  }
-
-  // Advanced Layers
-  signal = autoDenialVetoLayer(signal, priceData, candleScore);
-  signal = tpExtenderTrillions(signal, priceData.price);
-
-  // Memory Influence
-  if (signal === 'BUY') brainMemoryScore += 2;
-  if (signal === 'SELL') brainMemoryScore -= 2;
-
-  brainMemoryScore = Math.max(0, Math.min(100, brainMemoryScore));
-
-  lastSignal = signal;
-  lastPrice = priceData.price;
-
-  return signal;
-}
-
-// ===========================
-// ✅ BUY / SELL DECISIONS
-// ===========================
 function shouldBuy(price) {
-  return lastSignal === 'BUY';
+  return price < 2500;
 }
 
 function shouldSell(price) {
-  return lastSignal === 'SELL';
+  return price > 3500;
 }
 
-// ===========================
-// 📡 PUBLIC BRAIN SIGNAL ENTRYPOINT
-// ===========================
-async function getLiveBrainSignal(symbol = 'ETHUSDT') {
-  const priceData = await fetchPrice(symbol);
-  const decision = analyzeMarket(priceData);
+// 🧠 Main Brain Function
+async function runBrainCheck(symbol = 'ETHUSDT') {
+  console.log('[🧠 BRAIN] ⏳ Running strategy check...');
+  const data = await fetchPrice(symbol);
 
-  if (decision === 'BUY') logger.info(`🟢 BUY signal at ${priceData.price}`);
-  else if (decision === 'SELL') logger.info(`🔴 SELL signal at ${priceData.price}`);
-  else logger.info(`🟡 HOLD signal at ${priceData.price}`);
+  if (!data || !data.price) {
+    console.log('[❌ ERROR] Price fetch failed.');
+    return 'HOLD';
+  }
 
-  return decision;
+  const decision = analyzeMarket(data);
+
+  if (shouldBuy(data.price)) {
+    console.log(`[🟢 BUY] Signal at ${data.price}`);
+    return 'BUY';
+  }
+
+  if (shouldSell(data.price)) {
+    console.log(`[🔴 SELL] Signal at ${data.price}`);
+    return 'SELL';
+  }
+
+  console.log(`[🟡 HOLD] No signal at ${data.price}`);
+  return 'HOLD';
 }
 
-// 📤 Export Interface
-module.exports = {
-  analyzeMarket,
-  shouldBuy,
-  shouldSell,
-  getLiveBrainSignal,
+// 🧨 Manual Triggers
+async function manualTriggerBuy() {
+  console.log('🟢 [MANUAL] Forced BUY triggered.');
+  return 'BUY';
+}
+
+async function manualTriggerSell() {
+  console.log('🔴 [MANUAL] Forced SELL triggered.');
+  return 'SELL';
+}
+
+// 🔄 Export as browser global (for console access)
+window.CROAK_BRAIN = {
+  runBrainCheck,
+  manualTriggerBuy,
+  manualTriggerSell,
 };
