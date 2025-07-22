@@ -1,47 +1,63 @@
-// ⛓️ Required Connections (always keep)
-const { fetchPrice } = require('./priceFetcher');
+// brain.js
+// 🧠 61K Strategy Brain — Smart Signal Trigger with Executor Integration
+
+const axios = require('axios');
 const logger = require('./logger');
 
-// 🧠 Core Brain Variable (used by memory scoring system)
-let brainMemoryScore = 50;
+// === Configurable Thresholds ===
+const BUY_THRESHOLD = 2850;
+const SELL_THRESHOLD = 3500;
+const EXECUTION_AMOUNT = 1.5; // editable trade amount
 
-// 📊 Decision-Making Functions (can be upgraded inside)
-function analyzeMarket({ price, trend, volume, candle }) {
-  // Your existing market analysis logic here...
-  return 'HOLD'; // placeholder default
-}
-
+// === Decision Logic ===
 function shouldBuy(price) {
-  // Your existing buy condition here...
-  return price > 3500;  // example condition
+  return price < BUY_THRESHOLD; // BUY if cheap
 }
 
 function shouldSell(price) {
-  // Your existing sell condition here...
-  return price < 2850;  // example condition
+  return price > SELL_THRESHOLD; // SELL if expensive
 }
 
-// 📡 Public Interface (always export these, even if internal logic changes)
-async function getLiveBrainSignal(symbol = 'ETHUSDT') {
-  const priceData = await fetchPrice(symbol);
-  const decision = analyzeMarket(priceData);
+// === Signal Handler ===
+async function handleSignal(price) {
+  logger.info(`🔎 Checking price: $${price}`);
 
-  if (shouldBuy(priceData.price)) {
-    logger.info(`🟢 BUY signal at ${priceData.price}`);
-    return 'BUY';
-  } else if (shouldSell(priceData.price)) {
-    logger.info(`🔴 SELL signal at ${priceData.price}`);
-    return 'SELL';
+  if (shouldBuy(price)) {
+    logger.info("📈 BUY signal detected.");
+
+    try {
+      await axios.post("http://localhost:3000/api/execute", {
+        type: "buy",
+        amount: EXECUTION_AMOUNT,
+      });
+      logger.info("✅ BUY executed.");
+    } catch (err) {
+      logger.error("❌ Failed to execute BUY:", err.message);
+    }
   }
 
-  logger.info(`🟡 HOLD signal at ${priceData.price}`);
-  return 'HOLD';
+  else if (shouldSell(price)) {
+    logger.info("📉 SELL signal detected.");
+
+    try {
+      await axios.post("http://localhost:3000/api/execute", {
+        type: "sell",
+        amount: EXECUTION_AMOUNT,
+      });
+      logger.info("✅ SELL executed.");
+    } catch (err) {
+      logger.error("❌ Failed to execute SELL:", err.message);
+    }
+  }
+
+  else {
+    logger.info("⏸ No clear signal. Waiting...");
+  }
 }
 
-// 📤 Module Exports — AYAW TANGTANGA NI
+// === Exported for external use ===
 module.exports = {
-  analyzeMarket,
+  handleSignal,
   shouldBuy,
   shouldSell,
-  getLiveBrainSignal,
 };
