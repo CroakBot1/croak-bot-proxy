@@ -1,85 +1,59 @@
-// brain.js
+// brain.js ✅ CROAK BOT 61K STRATEGY BRAIN
+const logger = require('./logger');
 
-// 🔗 Dependencies
-const axios = require("axios");
-const { fetchMarketSnapshot } = require("./priceFetcher"); // 🔒 DO NOT REMOVE
-const logger = require("./logger"); // 🔒 DO NOT REMOVE
-
-// 🧠 Core Config
-const EXECUTION_AMOUNT = 0.01;
-const INTERVAL = 5000;
 let brainMemoryScore = 50;
+let forceBuy = false; // 🔁 Toggleable from UI or dev console if needed
 
-// 📊 Thresholds
-const BUY_THRESHOLD = 40;
-const SELL_THRESHOLD = 60;
+function runStrategy({ price, history, indicators, wallet }) {
+  logger.heartbeat("Running 61K strategy check...");
 
-// 🔧 Manual Force Mode (for testing only)
-const FORCE_BUY = true;
-const FORCE_SELL = false;
-
-// === Core Decision Functions ===
-function shouldBuy(price) {
-  return brainMemoryScore <= BUY_THRESHOLD;
-}
-
-function shouldSell(price) {
-  return brainMemoryScore >= SELL_THRESHOLD;
-}
-
-// === Signal Handler ===
-async function handleSignal(price) {
-  logger.info(`🔎 Checking price: $${price}`);
-
-  if (FORCE_BUY || shouldBuy(price)) {
-    logger.info("📈 BUY signal detected (forced or real).");
-
-    try {
-      await axios.post("http://localhost:3000/api/execute", {
-        type: "buy",
-        amount: EXECUTION_AMOUNT,
-      });
-      logger.info("✅ BUY executed.");
-    } catch (err) {
-      logger.error("❌ Failed to execute BUY:", err.message);
-    }
-    return;
+  // 🔐 SAFE CHECK: Missing essential data
+  if (!price || !wallet) {
+    logger.warn("Missing price or wallet context.");
+    return { action: "SKIP", reason: "Missing data" };
   }
 
-  if (FORCE_SELL || shouldSell(price)) {
-    logger.info("📉 SELL signal detected (forced or real).");
-
-    try {
-      await axios.post("http://localhost:3000/api/execute", {
-        type: "sell",
-        amount: EXECUTION_AMOUNT,
-      });
-      logger.info("✅ SELL executed.");
-    } catch (err) {
-      logger.error("❌ Failed to execute SELL:", err.message);
-    }
-    return;
+  // 🧠 FORCE BUY OVERRIDE
+  if (forceBuy) {
+    logger.tradeSignal("BUY", { reason: "Force Buy Mode Active" });
+    return { action: "BUY", reason: "Force Buy Override" };
   }
 
-  logger.info("⏸ No clear signal. Waiting...");
-}
+  // 💡 BASIC STRATEGY SIMULATION
+  const shouldBuy = indicators.rsi < 30 && price < history.avg;
+  const shouldSell = indicators.rsi > 70 && price > history.avg;
 
-// === Strategy Runner Loop ===
-async function runStrategyLoop() {
-  logger.info("🤖 Brain strategy loop initiated...");
-
-  while (true) {
-    try {
-      const market = await fetchMarketSnapshot();
-      const price = parseFloat(market.price);
-      await handleSignal(price);
-    } catch (err) {
-      logger.error("💥 Error during price check:", err.message);
-    }
-
-    await new Promise((res) => setTimeout(res, INTERVAL));
+  if (shouldBuy) {
+    logger.tradeSignal("BUY", { rsi: indicators.rsi, avg: history.avg });
+    return { action: "BUY", reason: "RSI Low + Under Avg Price" };
   }
+
+  if (shouldSell) {
+    logger.tradeSignal("SELL", { rsi: indicators.rsi, avg: history.avg });
+    return { action: "SELL", reason: "RSI High + Above Avg Price" };
+  }
+
+  // 🚫 NO TRADE CONDITIONS MET
+  logger.veto([
+    `RSI: ${indicators.rsi}`,
+    `Price: ${price}`,
+    `Avg: ${history.avg}`,
+    `MemoryScore: ${brainMemoryScore}`
+  ]);
+  return { action: "NONE", reason: "No Signal" };
 }
 
-// === Launch Brain ===
-runStrategyLoop();
+function setForceBuy(enabled = true) {
+  forceBuy = enabled;
+  logger.warn(`⚠️ FORCE BUY MODE: ${forceBuy ? "ENABLED" : "DISABLED"}`);
+}
+
+function getForceBuy() {
+  return forceBuy;
+}
+
+module.exports = {
+  runStrategy,
+  setForceBuy,
+  getForceBuy,
+};
