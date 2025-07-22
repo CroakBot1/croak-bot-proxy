@@ -1,5 +1,5 @@
 // ⛓️ Required Connections (always keep)
-const { fetchPrice } = require('./priceFetcher');
+const { fetchMarketSnapshot } = require('./priceFetcher');
 const logger = require('./logger');
 
 // 🧠 Core Brain Variables
@@ -41,36 +41,50 @@ function candlePatternReader(candle) {
     reasons: [],
   };
 
-  if (candle.green && candle.size === 'large') {
+  const green = candle.close > candle.open;
+  const red = !green;
+  const body = Math.abs(candle.close - candle.open);
+  const totalRange = candle.high - candle.low;
+  const bodyRatio = body / totalRange;
+
+  result.green = green;
+  result.red = red;
+  result.bodySmall = bodyRatio < 0.2;
+  result.size = bodyRatio > 0.7 ? 'large' : bodyRatio > 0.3 ? 'medium' : 'small';
+  result.wickTop = candle.high - Math.max(candle.close, candle.open) > body * 1.5;
+  result.wickBottom = Math.min(candle.close, candle.open) - candle.low > body * 1.5;
+
+  if (green && result.size === 'large') {
     result.buySignal = true;
     result.confidence += 20;
     result.reasons.push('🟢 Large Green Candle');
   }
-  if (candle.red && candle.size === 'large') {
+  if (red && result.size === 'large') {
     result.sellSignal = true;
     result.confidence += 20;
     result.reasons.push('🔴 Large Red Candle');
   }
 
-  if (candle.wickTop && candle.bodySmall) {
-    if (candle.red) {
+  if (result.wickTop && result.bodySmall) {
+    if (red) {
       result.sellSignal = true;
       result.confidence += 15;
       result.reasons.push('🪤 Wick Top Trap (Red Candle)');
     }
-    if (candle.green) {
+    if (green) {
       result.buySignal = true;
       result.confidence += 10;
       result.reasons.push('🪤 Wick Top Trap (Green Candle)');
     }
   }
-  if (candle.wickBottom && candle.bodySmall) {
-    if (candle.green) {
+
+  if (result.wickBottom && result.bodySmall) {
+    if (green) {
       result.buySignal = true;
       result.confidence += 15;
       result.reasons.push('🪤 Wick Bottom Trap (Green Candle)');
     }
-    if (candle.red) {
+    if (red) {
       result.sellSignal = true;
       result.confidence += 10;
       result.reasons.push('🪤 Wick Bottom Trap (Red Candle)');
@@ -140,11 +154,13 @@ function dynamicTradeFilter(trend, candle, volume) {
     reasons: [],
   };
 
-  if (trend === 'up' && candle.size === 'medium' && volume > 500000) {
+  const size = candle.size || 'medium';
+
+  if (trend === 'up' && size === 'medium' && volume > 500000) {
     result.buySignal = true;
     result.confidence += 10;
     result.reasons.push('🔥 Hot Entry Opportunity');
-  } else if (trend === 'down' && candle.size === 'medium' && volume > 500000) {
+  } else if (trend === 'down' && size === 'medium' && volume > 500000) {
     result.sellSignal = true;
     result.confidence += 10;
     result.reasons.push('❄️ Hot Exit Opportunity');
@@ -201,11 +217,11 @@ function analyzeMarket({ price, trend, volume, candle }) {
 }
 
 function shouldBuy(price) {
-  return false; // now handled by TP Extender
+  return false;
 }
 
 function shouldSell(price) {
-  return false; // now handled by TP Extender
+  return false;
 }
 
 // ------------------------------
@@ -213,10 +229,10 @@ function shouldSell(price) {
 // ------------------------------
 function tpExtender(decision, price) {
   if (decision.buySignal) {
-    lastConfirmedBuy = { 
-      price, 
-      time: Date.now(), 
-      confidence: decision.confidence 
+    lastConfirmedBuy = {
+      price,
+      time: Date.now(),
+      confidence: decision.confidence
     };
     logger.info("✅ BUY confirmed and saved by TP Extender:", lastConfirmedBuy);
     return { action: 'BUY', reasons: decision.reasons };
@@ -242,25 +258,25 @@ function tpExtender(decision, price) {
 // ------------------------------
 async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   try {
-    const priceData = await fetchPrice(symbol);
-    const dummyMarket = {
-      price: priceData.price,
-      trend: 'up',
-      volume: priceData.volume || 1000000,
-      candle: {
-        green: true,
-        red: false,
-        size: 'large',
-        wickTop: false,
-        wickBottom: false,
-        bodySmall: false,
-        freakSpike: false,
-        absurdGap: false,
-      },
+    const marketData = await fetchMarketSnapshot(symbol);
+
+    const trend = marketData.priceChangePercent > 0 ? 'up' : 'down';
+
+    const parsedCandle = {
+      open: marketData.candle.open,
+      high: marketData.candle.high,
+      low: marketData.candle.low,
+      close: marketData.candle.close
     };
 
-    const result = analyzeMarket(dummyMarket);
-    const final = tpExtender(result, priceData.price);
+    const result = analyzeMarket({
+      price: marketData.price,
+      trend,
+      volume: marketData.volume,
+      candle: parsedCandle,
+    });
+
+    const final = tpExtender(result, marketData.price);
     logger.info(`📈 Signal: ${final.action} | ${final.reasons.join(' | ')}`);
     return final.action;
   } catch (err) {
