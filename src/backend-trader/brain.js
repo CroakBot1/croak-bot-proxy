@@ -42,11 +42,28 @@ function trapDetectionUltra(priceData) {
   return priceData.spike || priceData.suddenDrop || priceData.fomoTrap || priceData.reversalAlert;
 }
 
-function autoDenialVetoLayer(signal, priceData) {
-  if (trapDetectionUltra(priceData)) {
-    logger.warn('🚫 AUTO-DENIAL VETO™ — Trade denied due to trap signature.');
+function autoDenialVetoLayer(signal, priceData, candleScore) {
+  if (signal === 'HOLD') return signal;
+  const vetoReasons = [];
+
+  const candleIsWeak = candleScore < 40;
+  const buyNotAllowed = !smartEntryFilterLayer(priceData);
+  const trapDetected = trapDetectionUltra(priceData);
+  const momentumDeny = invertedMomentumDenial(priceData);
+  const memoryWeak = brainMemoryScore < 40;
+
+  if (candleIsWeak) vetoReasons.push('Candle Reader: ❌ Weak momentum candle');
+  if (buyNotAllowed) vetoReasons.push('Smart Entry Filter: ❌ Blocked by plugin logic');
+  if (trapDetected) vetoReasons.push('Trap Detector: ⚠️ Trap signature detected');
+  if (momentumDeny) vetoReasons.push('Inverted Momentum Denial: ⚠️ Reversal risk present');
+  if (memoryWeak) vetoReasons.push(`Brain Memory Score: ${brainMemoryScore} 🟡 (Uncertain)`);
+
+  if (vetoReasons.length > 0) {
+    vetoReasons.push('Auto-Denial Veto™: BLOCKED by Final Judgment Layer');
+    logger.veto(vetoReasons);
     return 'HOLD';
   }
+
   return signal;
 }
 
@@ -109,7 +126,7 @@ function analyzeMarket(priceData) {
   }
 
   // Advanced Layers
-  signal = autoDenialVetoLayer(signal, priceData);
+  signal = autoDenialVetoLayer(signal, priceData, candleScore);
   signal = tpExtenderTrillions(signal, priceData.price);
 
   // Memory Influence
