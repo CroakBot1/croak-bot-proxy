@@ -6,46 +6,79 @@ const logger = require('./logger');
 let brainMemoryScore = 50;
 const TOTAL_LAYERS = 20000;
 
-// === Smart Layer Signal System ===
-function getLayerSignal(layerId, marketData) {
-  const price = marketData.price;
-  const volume = marketData.volume;
-  const trend = marketData.trend;
-  const volatility = marketData.volatility;
-  const momentum = marketData.momentum;
+// === Individual Layer Handlers (assumed imported or defined elsewhere) ===
+// Dummy placeholders — these should be real imported modules
+function runRSILayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runMACDLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runSupportResistanceLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runTrapDetectionLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runMetaLearningLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runSelfEvolvingLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runDynamicTPStopLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runMultiTimeframeLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+function runFinalJudgmentLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
 
-  // 1m TF scalping logic from Layer 32+ prioritized
-  if (layerId >= 32 && layerId <= 10000) {
-    const priceMod = (price % 10) / 10;
-    const momentumMod = momentum > 0.5 ? 'BUY' : momentum < -0.5 ? 'SELL' : 'HOLD';
-    return priceMod > 0.7 ? 'BUY' : priceMod < 0.3 ? 'SELL' : momentumMod;
-  }
-
-  // Memory-based adjustment layers
-  if (layerId > 10000 && layerId <= 20000) {
-    if (brainMemoryScore > 75) return 'BUY';
-    if (brainMemoryScore < 25) return 'SELL';
-    return 'HOLD';
-  }
-
-  // Default behavior
-  return trend > 0 ? 'BUY' : trend < 0 ? 'SELL' : 'HOLD';
+// === Layer Execution Logic ===
+function runSmartLayer({ id, candleData, state }) {
+  if (id <= 50) return runRSILayer({ id, candleData, state });
+  if (id <= 100) return runMACDLayer({ id, candleData, state });
+  if (id <= 150) return runSupportResistanceLayer({ id, candleData, state });
+  if (id <= 500) return runTrapDetectionLayer({ id, candleData, state });
+  if (id <= 1000) return runMetaLearningLayer({ id, candleData, state });
+  if (id <= 5000) return runSelfEvolvingLayer({ id, candleData, state });
+  if (id <= 10000) return runDynamicTPStopLayer({ id, candleData, state });
+  if (id <= 15000) return runMultiTimeframeLayer({ id, candleData, state });
+  if (id <= 20000) return runFinalJudgmentLayer({ id, candleData, state });
+  return null;
 }
 
-// === Signal Fusion Engine ===
+// === Aggregation of All Layer Signals ===
+function evaluateAllLayers(candleData, state) {
+  const allSignals = [];
+
+  for (let i = 1; i <= TOTAL_LAYERS; i++) {
+    const signal = runSmartLayer({ id: i, candleData, state });
+    if (signal) allSignals.push(signal);
+  }
+
+  return mergeSignals(allSignals);
+}
+
+// === Signal Merging ===
 function mergeSignals(signals) {
-  const counts = { BUY: 0, SELL: 0, HOLD: 0 };
-  signals.forEach(sig => counts[sig]++);
+  let buyVotes = 0;
+  let sellVotes = 0;
+  let holdVotes = 0;
+  let totalConfidence = 0;
 
-  const weightedBuy = counts.BUY + brainMemoryScore / 10;
-  const weightedSell = counts.SELL + (100 - brainMemoryScore) / 10;
+  for (const signal of signals) {
+    const confidence = signal.confidence || 1;
+    totalConfidence += confidence;
 
-  if (weightedBuy > weightedSell && weightedBuy > counts.HOLD) return 'BUY';
-  if (weightedSell > weightedBuy && weightedSell > counts.HOLD) return 'SELL';
-  return 'HOLD';
+    if (signal.type === 'BUY') buyVotes += confidence;
+    else if (signal.type === 'SELL') sellVotes += confidence;
+    else holdVotes += confidence;
+  }
+
+  const net = buyVotes - sellVotes;
+
+  const dominantAction = net > 0.1 * totalConfidence
+    ? 'BUY'
+    : net < -0.1 * totalConfidence
+    ? 'SELL'
+    : 'HOLD';
+
+  const strength = Math.abs(net) / totalConfidence;
+
+  return {
+    action: dominantAction,
+    strength: Math.min(1, strength),
+    confidenceScore: totalConfidence,
+    votes: { buy: buyVotes, sell: sellVotes, hold: holdVotes }
+  };
 }
 
-// 📊 Decision-Making Functions (can be upgraded inside)
+// === Optional Rule-Based Decision Logic ===
 function analyzeMarket({ price, trend, volume, candle }) {
   return trend > 0.2 ? 'BUY' : trend < -0.2 ? 'SELL' : 'HOLD';
 }
@@ -60,32 +93,22 @@ function shouldSell(price) {
 
 // === Core Brain Loop ===
 async function runBrainCycle() {
-  logger.info('⏳ Running 61K strategy check...');
+  logger.info('⏳ Running diversified brain cycle...');
 
   try {
     const marketData = await fetchMarketSnapshot();
+    const finalDecision = evaluateAllLayers(marketData, { memoryScore: brainMemoryScore });
 
-    const layerSignals = [];
-    for (let i = 1; i <= TOTAL_LAYERS; i++) {
-      const signal = getLayerSignal(i, marketData);
-      layerSignals.push(signal);
-    }
+    logger.info(`🧠 Brain Decision: ${finalDecision.action} (confidence: ${finalDecision.strength})`);
 
-    const finalSignal = mergeSignals(layerSignals);
-    logger.info(`🧠 Brain Decision: ${finalSignal}`);
-
-    return {
-      layerSignals,
-      memoryWeightedSignal: finalSignal,
-      finalDecision: finalSignal
-    };
+    return finalDecision;
   } catch (error) {
     logger.error('💥 Error during brain cycle:', error);
     return null;
   }
 }
 
-// 📡 Public Interface (always export these, even if internal logic changes)
+// === Public Interface ===
 async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   const priceData = await fetchPrice(symbol);
   const decision = analyzeMarket(priceData);
@@ -102,11 +125,13 @@ async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   return 'HOLD';
 }
 
-// 📤 Module Exports — AYAW TANGTANGA NI
+// === Export API ===
 module.exports = {
-  runBrainCycle,
+  evaluateAllLayers,
+  mergeSignals,
   analyzeMarket,
   shouldBuy,
   shouldSell,
   getLiveBrainSignal,
+  runBrainCycle,
 };
