@@ -1,4 +1,4 @@
-// logger.js
+// logger.js ✅ CROAK BOT LOGGER SYSTEM
 
 function timestamp() {
   return new Date().toISOString();
@@ -42,6 +42,20 @@ function veto(reasonLines = []) {
   }
 }
 
+// 🆕 Additional helpers (non-breaking)
+function tradeSignal(type = "BUY", details = {}) {
+  const emoji = type === "BUY" ? "🟢" : "🔴";
+  console.log(`[${timestamp()}] [${emoji} ${type} SIGNAL]`, details);
+}
+
+function dryRunNotice(msg = "Dry run mode — no real trades will execute") {
+  console.log(`[${timestamp()}] [💤 DRY RUN] ${msg}`);
+}
+
+function skipped(reason = "Unknown reason") {
+  console.log(`[${timestamp()}] [⏭️ SKIPPED] ${reason}`);
+}
+
 module.exports = {
   info,
   warn,
@@ -50,5 +64,8 @@ module.exports = {
   debug,
   heartbeat,
   executed,
-  veto, // ✅ ADDED
+  veto,
+  tradeSignal,   // 🆕 Optional for clean trade signal logging
+  dryRunNotice,  // 🆕 Optional notice for dry run environments
+  skipped        // 🆕 Logs when a trade is intentionally skipped
 };
