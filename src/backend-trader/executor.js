@@ -1,5 +1,3 @@
-// executor.js
-
 require('dotenv').config();
 const { ethers } = require('ethers');
 const {
@@ -10,6 +8,9 @@ const {
   getDeadline,
   toRaw,
 } = require('./uniswapHelpers');
+
+// 🔒 Connect logger.js
+const logger = require('./logger');
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
@@ -23,10 +24,14 @@ const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, abi, signer);
 
+// ✅ Log that connection is established
+logger.info(`🔗 executor.js connected to logger.js`);
+logger.info(`🔐 Connected to wallet: ${signer.address}`);
+
 async function executeSwap({ amountIn, tokenIn, tokenOut, recipient = WALLET, slippage = SLIPPAGE_TOLERANCE }) {
   try {
-    console.log(`[🧠 EXEC SWAP] Wallet: ${signer.address}`);
-    console.log(`[🧪 Params] ${tokenIn} ➡️ ${tokenOut} | Amount: ${amountIn} | Slippage: ${slippage}`);
+    logger.info(`[🧠 EXEC SWAP] Wallet: ${signer.address}`);
+    logger.info(`[🧪 Params] ${tokenIn} ➡️ ${tokenOut} | Amount: ${amountIn} | Slippage: ${slippage}`);
 
     const decimals = tokenIn === USDC_ADDRESS ? 6 : 18;
     const amountInRaw = toRaw(amountIn, decimals);
@@ -47,12 +52,12 @@ async function executeSwap({ amountIn, tokenIn, tokenOut, recipient = WALLET, sl
       gasLimit: ethers.utils.hexlify(800000),
     });
 
-    console.log(`[TX] 📤 Sent: ${tx.hash}`);
+    logger.info(`[TX] 📤 Sent: ${tx.hash}`);
     const receipt = await tx.wait();
-    console.log(`[✅] Confirmed: ${receipt.transactionHash}`);
+    logger.info(`[✅] Confirmed: ${receipt.transactionHash}`);
     return receipt;
   } catch (err) {
-    console.error(`[❌ ERROR] Swap failed:`, err);
+    logger.error(`[❌ ERROR] Swap failed:`, err);
     return null;
   }
 }
