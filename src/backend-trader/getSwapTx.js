@@ -2,53 +2,66 @@
 
 const { ethers } = require('ethers');
 const {
-  SWAP_ROUTER_ADDRESS,
   getDeadline,
-  toRaw
+  toRaw,
+  SWAP_ROUTER_ADDRESS,
+  SLIPPAGE_TOLERANCE,
+  USDC_ADDRESS,
+  WETH_ADDRESS,
 } = require('./uniswapHelpers');
 
-// ✅ Uniswap V3 SwapRouter ABI (minimal required)
-const swapRouterAbi = [
-  'function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'
+const IERC20_ABI = [
+  'function decimals() view returns (uint8)',
 ];
 
-// 🔄 Generate Swap Transaction
-async function getSwapTx({ wallet, amountIn, tokenIn, tokenOut, slippage = 0.01 }) {
-  const router = new ethers.Contract(SWAP_ROUTER_ADDRESS, swapRouterAbi, wallet);
+// Utility to get decimals of a token
+async function getTokenDecimals(tokenAddress, provider) {
+  const contract = new ethers.Contract(tokenAddress, IERC20_ABI, provider);
+  return await contract.decimals();
+}
 
-  // Define the fee tier (Base uses 0.05% = 500 for most tokens)
-  const fee = 500;
+async function getSwapTx({
+  provider,
+  wallet,
+  amountIn,
+  tokenIn,
+  tokenOut,
+  slippage = SLIPPAGE_TOLERANCE,
+}) {
+  const router = new ethers.Contract(
+    SWAP_ROUTER_ADDRESS,
+    ['function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'],
+    wallet
+  );
 
-  // Calculate minimum output after slippage
-  const rawAmountIn = toRaw(amountIn, 18); // Assuming tokenIn is ETH (18 decimals)
+  const tokenInDecimals = await getTokenDecimals(tokenIn, provider);
+  const tokenOutDecimals = await getTokenDecimals(tokenOut, provider);
 
-  // ⚠️ If you're dealing with non-18 decimal tokens (like USDC), adjust accordingly.
-  const amountOutMinimum = 0; // Optional: Set to 0 to accept any amount (use slippage calc here if needed)
-
-  // Deadline in seconds (current time + 60s)
-  const deadline = getDeadline();
+  const amountInRaw = toRaw(amountIn, tokenInDecimals);
+  const minAmountOut = amountInRaw
+    .mul(ethers.BigNumber.from(10000 - slippage * 10000))
+    .div(10000);
 
   const params = {
     tokenIn,
     tokenOut,
-    fee,
+    fee: 3000, // Uniswap V3 fee tier (0.3%)
     recipient: await wallet.getAddress(),
-    deadline,
-    amountIn: rawAmountIn,
-    amountOutMinimum,
+    deadline: getDeadline(),
+    amountIn: amountInRaw,
+    amountOutMinimum: minAmountOut,
     sqrtPriceLimitX96: 0,
   };
 
-  const iface = new ethers.utils.Interface(swapRouterAbi);
-  const data = iface.encodeFunctionData('exactInputSingle', [params]);
+  const overrides = tokenIn === WETH_ADDRESS ? { value: amountInRaw } : {};
 
   return {
-    to: SWAP_ROUTER_ADDRESS,
-    data,
-    value: tokenIn === ethers.constants.AddressZero ? rawAmountIn : 0,
-    gasLimit: ethers.utils.hexlify(700000), // Safe upper bound
+    tx: await router.populateTransaction.exactInputSingle(params, overrides),
+    tokenInDecimals,
+    tokenOutDecimals,
+    amountInRaw,
+    minAmountOut,
   };
 }
 
 module.exports = { getSwapTx };
-
