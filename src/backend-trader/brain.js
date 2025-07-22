@@ -7,7 +7,6 @@ let forceBuy = false; // 🔁 Toggleable from UI or dev console if needed
 function runStrategy({ price, history, indicators, wallet }) {
   logger.heartbeat("Running 61K strategy check...");
 
-  // 🔐 SAFE CHECK: Missing essential data
   if (!price || !wallet) {
     logger.warn("Missing price or wallet context.");
     return { action: "SKIP", reason: "Missing data" };
@@ -33,7 +32,6 @@ function runStrategy({ price, history, indicators, wallet }) {
     return { action: "SELL", reason: "RSI High + Above Avg Price" };
   }
 
-  // 🚫 NO TRADE CONDITIONS MET
   logger.veto([
     `RSI: ${indicators.rsi}`,
     `Price: ${price}`,
@@ -50,6 +48,12 @@ function setForceBuy(enabled = true) {
 
 function getForceBuy() {
   return forceBuy;
+}
+
+// === OPTIONAL DEV TEST: Force buy once on startup ===
+if (process.env.FORCE_BUY === 'true') {
+  setForceBuy(true);
+  logger.warn("🚨 DEV MODE: Force Buy is ENABLED on startup!");
 }
 
 module.exports = {
