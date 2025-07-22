@@ -1,39 +1,38 @@
 // brain.js
-// 🧠 61K Strategy Brain — Smart Signal Trigger with Executor Integration
 
-const axios = require('axios');
-const { fetchPrice } = require('./priceFetcher');
-const logger = require('./logger');
+// 🔗 Dependencies
+const axios = require("axios");
+const { fetchMarketSnapshot } = require("./priceFetcher"); // 🔒 DO NOT REMOVE
+const logger = require("./logger"); // 🔒 DO NOT REMOVE
 
-// === Configurable Thresholds ===
-const BUY_THRESHOLD = 2850;
-const SELL_THRESHOLD = 3500;
-const EXECUTION_AMOUNT = 1.5; // editable trade amount
-
-// 🧠 Core Brain Variable (used by memory scoring system)
+// 🧠 Core Config
+const EXECUTION_AMOUNT = 0.01;
+const INTERVAL = 5000;
 let brainMemoryScore = 50;
 
-// === Decision Logic ===
+// 📊 Thresholds
+const BUY_THRESHOLD = 40;
+const SELL_THRESHOLD = 60;
+
+// 🔧 Manual Force Mode (for testing only)
+const FORCE_BUY = true;
+const FORCE_SELL = false;
+
+// === Core Decision Functions ===
 function shouldBuy(price) {
-  return price < BUY_THRESHOLD; // BUY if cheap
+  return brainMemoryScore <= BUY_THRESHOLD;
 }
 
 function shouldSell(price) {
-  return price > SELL_THRESHOLD; // SELL if expensive
+  return brainMemoryScore >= SELL_THRESHOLD;
 }
 
-// === Smart Market Analyzer (expandable) ===
-function analyzeMarket({ price, trend, volume, candle }) {
-  // Placeholder for future smart analysis logic
-  return price;
-}
-
-// === Signal Handler with Executor Integration ===
+// === Signal Handler ===
 async function handleSignal(price) {
   logger.info(`🔎 Checking price: $${price}`);
 
-  if (shouldBuy(price)) {
-    logger.info("📈 BUY signal detected.");
+  if (FORCE_BUY || shouldBuy(price)) {
+    logger.info("📈 BUY signal detected (forced or real).");
 
     try {
       await axios.post("http://localhost:3000/api/execute", {
@@ -44,10 +43,11 @@ async function handleSignal(price) {
     } catch (err) {
       logger.error("❌ Failed to execute BUY:", err.message);
     }
+    return;
   }
 
-  else if (shouldSell(price)) {
-    logger.info("📉 SELL signal detected.");
+  if (FORCE_SELL || shouldSell(price)) {
+    logger.info("📉 SELL signal detected (forced or real).");
 
     try {
       await axios.post("http://localhost:3000/api/execute", {
@@ -58,53 +58,28 @@ async function handleSignal(price) {
     } catch (err) {
       logger.error("❌ Failed to execute SELL:", err.message);
     }
+    return;
   }
 
-  else {
-    logger.info("⏸ No clear signal. Waiting...");
+  logger.info("⏸ No clear signal. Waiting...");
+}
+
+// === Strategy Runner Loop ===
+async function runStrategyLoop() {
+  logger.info("🤖 Brain strategy loop initiated...");
+
+  while (true) {
+    try {
+      const market = await fetchMarketSnapshot();
+      const price = parseFloat(market.price);
+      await handleSignal(price);
+    } catch (err) {
+      logger.error("💥 Error during price check:", err.message);
+    }
+
+    await new Promise((res) => setTimeout(res, INTERVAL));
   }
 }
 
-// === Public Signal Interface ===
-async function getLiveBrainSignal(symbol = 'ETHUSDT') {
-  const priceData = await fetchPrice(symbol);
-  const decision = analyzeMarket(priceData);
-
-  if (shouldBuy(priceData.price)) {
-    logger.info(`🟢 BUY signal at ${priceData.price}`);
-    return 'BUY';
-  } else if (shouldSell(priceData.price)) {
-    logger.info(`🔴 SELL signal at ${priceData.price}`);
-    return 'SELL';
-  }
-
-  logger.info(`🟡 HOLD signal at ${priceData.price}`);
-  return 'HOLD';
-}
-
-// === FORCED EXECUTION TEST ONLY ===
-async function forceBuyExecution() {
-  logger.warn("🚨 FORCING BUY TRADE (TEST ONLY)");
-
-  try {
-    await axios.post("http://localhost:3000/api/execute", {
-      type: "buy",
-      amount: EXECUTION_AMOUNT,
-    });
-    logger.info("✅ FORCED BUY executed.");
-  } catch (err) {
-    logger.error("❌ Failed to FORCE BUY:", err.message);
-  }
-}
-
-// Optional: run it once during startup (for test only)
-forceBuyExecution(); // ⚠️ Comment this out after testtest
-
-// === Exports — AYAW TANGTANGA NI ===
-module.exports = {
-  analyzeMarket,
-  shouldBuy,
-  shouldSell,
-  getLiveBrainSignal,
-  handleSignal,
-};
+// === Launch Brain ===
+runStrategyLoop();
