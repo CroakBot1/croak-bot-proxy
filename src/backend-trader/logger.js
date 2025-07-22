@@ -1,9 +1,8 @@
-// logger.js
-
 function timestamp() {
   return new Date().toISOString();
 }
 
+// 🔁 Core Logs
 function info(...args) {
   console.log(`[${timestamp()}] [ℹ️ INFO]`, ...args);
 }
@@ -34,6 +33,21 @@ function executed(action, price, txHash = '') {
   console.log(`[${timestamp()}] [${tag}] at $${price} ${txHash ? `| tx: ${txHash}` : ''}`);
 }
 
+// ✅ NEW: Veto Reason Logger — detailed breakdown
+function veto(reasonObj = {}) {
+  console.log(`[${timestamp()}] [🛑 VETO] No trade signal at this price.`);
+  console.log(`🧠 Reason Breakdown:`);
+
+  if (reasonObj.candle !== undefined)
+    console.log(`  • Candle Reader: ${reasonObj.candle}`);
+  if (reasonObj.trap !== undefined)
+    console.log(`  • Trap Detector: ${reasonObj.trap}`);
+  if (reasonObj.memoryScore !== undefined)
+    console.log(`  • Brain Memory Score: ${reasonObj.memoryScore}`);
+  if (reasonObj.veto !== undefined)
+    console.log(`  • Auto-Denial Veto™: ${reasonObj.veto}`);
+}
+
 module.exports = {
   info,
   warn,
@@ -41,5 +55,6 @@ module.exports = {
   success,
   debug,
   heartbeat,
-  executed, // ✅ Exported cleanly
+  executed,
+  veto // ✅ Include the new veto log
 };
