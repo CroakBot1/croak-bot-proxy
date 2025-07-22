@@ -1,8 +1,9 @@
+// logger.js
+
 function timestamp() {
   return new Date().toISOString();
 }
 
-// 🔁 Core Logs
 function info(...args) {
   console.log(`[${timestamp()}] [ℹ️ INFO]`, ...args);
 }
@@ -20,32 +21,25 @@ function success(...args) {
 }
 
 function debug(...args) {
-  console.log(`[${timestamp()}] [🧪 DEBUG]`, ...args);
+  console.debug(`[${timestamp()}] [🧪 DEBUG]`, ...args);
 }
 
 function heartbeat(msg = "💓 CROAK Loop is alive") {
   console.log(`[${timestamp()}] [💓 HEARTBEAT] ${msg}`);
 }
 
-// ✅ NEW: Trade execution log
-function executed(action, price, txHash = '') {
-  const tag = action === 'buy' ? '🟢 BUY EXECUTED' : '🔴 SELL EXECUTED';
-  console.log(`[${timestamp()}] [${tag}] at $${price} ${txHash ? `| tx: ${txHash}` : ''}`);
+function executed(orderDetails = {}) {
+  console.log(`[${timestamp()}] [🚀 TRADE EXECUTED]`, orderDetails);
 }
 
-// ✅ NEW: Veto Reason Logger — detailed breakdown
-function veto(reasonObj = {}) {
+function veto(reasonLines = []) {
   console.log(`[${timestamp()}] [🛑 VETO] No trade signal at this price.`);
-  console.log(`🧠 Reason Breakdown:`);
-
-  if (reasonObj.candle !== undefined)
-    console.log(`  • Candle Reader: ${reasonObj.candle}`);
-  if (reasonObj.trap !== undefined)
-    console.log(`  • Trap Detector: ${reasonObj.trap}`);
-  if (reasonObj.memoryScore !== undefined)
-    console.log(`  • Brain Memory Score: ${reasonObj.memoryScore}`);
-  if (reasonObj.veto !== undefined)
-    console.log(`  • Auto-Denial Veto™: ${reasonObj.veto}`);
+  if (reasonLines.length > 0) {
+    console.log(`🧠 Reason Breakdown:`);
+    reasonLines.forEach((line) => {
+      console.log(`  • ${line}`);
+    });
+  }
 }
 
 module.exports = {
@@ -56,5 +50,5 @@ module.exports = {
   debug,
   heartbeat,
   executed,
-  veto // ✅ Include the new veto log
+  veto, // ✅ ADDED
 };
