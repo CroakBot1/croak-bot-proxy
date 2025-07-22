@@ -1,4 +1,4 @@
-/ index.js
+// index.js
 
 const express = require('express');
 const { checkPriceAndTrade } = require('./trader'); // Main trading logic
