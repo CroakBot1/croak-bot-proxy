@@ -213,12 +213,27 @@ function shouldSell(price) {
 // ------------------------------
 function tpExtender(decision, price) {
   if (decision.buySignal) {
-    lastConfirmedBuy = { price, time: Date.now(), confidence: decision.confidence };
+    lastConfirmedBuy = { 
+      price, 
+      time: Date.now(), 
+      confidence: decision.confidence 
+    };
+    logger.info("✅ BUY confirmed and saved by TP Extender:", lastConfirmedBuy);
     return { action: 'BUY', reasons: decision.reasons };
   }
-  if (decision.sellSignal && lastConfirmedBuy) {
-    return { action: 'SELL', reasons: decision.reasons };
+
+  if (decision.sellSignal) {
+    if (lastConfirmedBuy) {
+      const gain = ((price - lastConfirmedBuy.price) / lastConfirmedBuy.price) * 100;
+      logger.info(`📤 SELL triggered. Entry: $${lastConfirmedBuy.price}, Exit: $${price}, PnL: ${gain.toFixed(2)}%`);
+      lastConfirmedBuy = null;
+      return { action: 'SELL', reasons: decision.reasons };
+    } else {
+      logger.warn("⚠️ SELL signal ignored — no recent BUY was confirmed.");
+      return { action: 'HOLD', reasons: ['🛑 No prior BUY — SELL denied'] };
+    }
   }
+
   return { action: 'HOLD', reasons: decision.reasons };
 }
 
