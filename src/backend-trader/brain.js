@@ -2,12 +2,16 @@
 // 🧠 61K Strategy Brain — Smart Signal Trigger with Executor Integration
 
 const axios = require('axios');
+const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
 
 // === Configurable Thresholds ===
 const BUY_THRESHOLD = 2850;
 const SELL_THRESHOLD = 3500;
 const EXECUTION_AMOUNT = 1.5; // editable trade amount
+
+// 🧠 Core Brain Variable (used by memory scoring system)
+let brainMemoryScore = 50;
 
 // === Decision Logic ===
 function shouldBuy(price) {
@@ -18,7 +22,13 @@ function shouldSell(price) {
   return price > SELL_THRESHOLD; // SELL if expensive
 }
 
-// === Signal Handler ===
+// === Smart Market Analyzer (expandable) ===
+function analyzeMarket({ price, trend, volume, candle }) {
+  // Placeholder for future smart analysis logic
+  return price;
+}
+
+// === Signal Handler with Executor Integration ===
 async function handleSignal(price) {
   logger.info(`🔎 Checking price: $${price}`);
 
@@ -55,9 +65,28 @@ async function handleSignal(price) {
   }
 }
 
-// === Exported for external use ===
+// === Public Signal Interface ===
+async function getLiveBrainSignal(symbol = 'ETHUSDT') {
+  const priceData = await fetchPrice(symbol);
+  const decision = analyzeMarket(priceData);
+
+  if (shouldBuy(priceData.price)) {
+    logger.info(`🟢 BUY signal at ${priceData.price}`);
+    return 'BUY';
+  } else if (shouldSell(priceData.price)) {
+    logger.info(`🔴 SELL signal at ${priceData.price}`);
+    return 'SELL';
+  }
+
+  logger.info(`🟡 HOLD signal at ${priceData.price}`);
+  return 'HOLD';
+}
+
+// === Exports — AYAW TANGTANGA NI ===
 module.exports = {
-  handleSignal,
+  analyzeMarket,
   shouldBuy,
   shouldSell,
+  getLiveBrainSignal,
+  handleSignal,
 };
