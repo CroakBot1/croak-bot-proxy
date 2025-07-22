@@ -10,9 +10,7 @@ const {
   WETH_ADDRESS,
 } = require('./uniswapHelpers');
 
-const IERC20_ABI = [
-  'function decimals() view returns (uint8)',
-];
+const IERC20_ABI = ['function decimals() view returns (uint8)'];
 
 // Utility to get decimals of a token
 async function getTokenDecimals(tokenAddress, provider) {
@@ -30,7 +28,9 @@ async function getSwapTx({
 }) {
   const router = new ethers.Contract(
     SWAP_ROUTER_ADDRESS,
-    ['function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'],
+    [
+      'function exactInputSingle((address,address,uint24,address,uint256,uint256,uint160)) external payable returns (uint256)'
+    ],
     wallet
   );
 
@@ -38,22 +38,28 @@ async function getSwapTx({
   const tokenOutDecimals = await getTokenDecimals(tokenOut, provider);
 
   const amountInRaw = toRaw(amountIn, tokenInDecimals);
+
   const minAmountOut = amountInRaw
     .mul(ethers.BigNumber.from(10000 - slippage * 10000))
     .div(10000);
 
+  const recipient = await wallet.getAddress();
+
   const params = {
     tokenIn,
     tokenOut,
-    fee: 3000, // Uniswap V3 fee tier (0.3%)
-    recipient: await wallet.getAddress(),
+    fee: 3000,
+    recipient,
     deadline: getDeadline(),
     amountIn: amountInRaw,
     amountOutMinimum: minAmountOut,
     sqrtPriceLimitX96: 0,
   };
 
-  const overrides = tokenIn === WETH_ADDRESS ? { value: amountInRaw } : {};
+  const overrides = {};
+  if (tokenIn.toLowerCase() === WETH_ADDRESS.toLowerCase()) {
+    overrides.value = amountInRaw;
+  }
 
   return {
     tx: await router.populateTransaction.exactInputSingle(params, overrides),
