@@ -1,85 +1,34 @@
-// brain.js
+/ index.js
 
-// 🔗 Dependencies
-const axios = require("axios");
-const { fetchMarketSnapshot } = require("./priceFetcher"); // 🔒 DO NOT REMOVE
-const logger = require("./logger"); // 🔒 DO NOT REMOVE
+const express = require('express');
+const { checkPriceAndTrade } = require('./trader'); // Main trading logic
+const logger = require('./logger');
 
-// 🧠 Core Config
-const EXECUTION_AMOUNT = 0.01;
-const INTERVAL = 5000;
-let brainMemoryScore = 50;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// 📊 Thresholds
-const BUY_THRESHOLD = 40;
-const SELL_THRESHOLD = 60;
+// Manual check
+app.get('/', (req, res) => {
+  res.send('🐸 Croak Bot Live');
+});
 
-// 🔧 Manual Force Mode (for testing only)
-const FORCE_BUY = true;
-const FORCE_SELL = false;
+// Uptime ping for Render or other CRON
+app.get('/ping', (req, res) => {
+  logger.heartbeat('💓 Ping received to keep server awake.');
+  res.send('pong');
+});
 
-// === Core Decision Functions ===
-function shouldBuy(price) {
-  return brainMemoryScore <= BUY_THRESHOLD;
-}
-
-function shouldSell(price) {
-  return brainMemoryScore >= SELL_THRESHOLD;
-}
-
-// === Signal Handler ===
-async function handleSignal(price) {
-  logger.info(`🔎 Checking price: $${price}`);
-
-  if (FORCE_BUY || shouldBuy(price)) {
-    logger.info("📈 BUY signal detected (forced or real).");
-
-    try {
-      await axios.post("http://localhost:3000/api/execute", {
-        type: "buy",
-        amount: EXECUTION_AMOUNT,
-      });
-      logger.info("✅ BUY executed.");
-    } catch (err) {
-      logger.error("❌ Failed to execute BUY:", err.message);
-    }
-    return;
+// Core auto-trade loop
+setInterval(async () => {
+  try {
+    logger.info('⏳ Running 61K strategy check...');
+    await checkPriceAndTrade();
+  } catch (err) {
+    logger.error('🔥 Trading loop error:', err.message);
   }
+}, 10 * 1000); // 10s interval
 
-  if (FORCE_SELL || shouldSell(price)) {
-    logger.info("📉 SELL signal detected (forced or real).");
-
-    try {
-      await axios.post("http://localhost:3000/api/execute", {
-        type: "sell",
-        amount: EXECUTION_AMOUNT,
-      });
-      logger.info("✅ SELL executed.");
-    } catch (err) {
-      logger.error("❌ Failed to execute SELL:", err.message);
-    }
-    return;
-  }
-
-  logger.info("⏸ No clear signal. Waiting...");
-}
-
-// === Strategy Runner Loop ===
-async function runStrategyLoop() {
-  logger.info("🤖 Brain strategy loop initiated...");
-
-  while (true) {
-    try {
-      const market = await fetchMarketSnapshot();
-      const price = parseFloat(market.price);
-      await handleSignal(price);
-    } catch (err) {
-      logger.error("💥 Error during price check:", err.message);
-    }
-
-    await new Promise((res) => setTimeout(res, INTERVAL));
-  }
-}
-
-// === Launch Brain ===
-runStrategyLoop();
+// Server startup
+app.listen(PORT, () => {
+  logger.info(`🚀 CROAK BOT listening on port ${PORT}`);
+});
