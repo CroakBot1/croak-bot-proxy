@@ -1,76 +1,64 @@
-// brain.js (Frontend version)
+// ⛓️ Required Connections (always keep)
+// 🔒 DO NOT REMOVE — dependencies used across brain system
+const { fetchMarketSnapshot } = require('./priceFetcher'); // 🔒 DO NOT REMOVE
+const logger = require('./logger'); // 🔒 DO NOT REMOVE
 
-// Brain Memory Score
+// 🧠 Core Brain Variables
 let brainMemoryScore = 50;
 
-// 🔌 Price fetcher from backend API (or your own proxy endpoint)
-async function fetchPrice(symbol = 'ETHUSDT') {
+// 🧠 Core Logic Functions
+function runBrainCheck() {
+  logger.info('⏳ Running 61K strategy check...');
   try {
-    const res = await fetch(`/api/price?symbol=${symbol}`);
-    const data = await res.json();
-    return data;
+    fetchMarketSnapshot()
+      .then((data) => {
+        const { price, trend, volume } = data;
+
+        if (price > 3500 && trend === 'bullish' && volume > 1000000) {
+          logger.info('🟢 BUY signal confirmed by brain logic.');
+        } else if (price < 2850 && trend === 'bearish') {
+          logger.warn('🔴 SELL signal confirmed by brain logic.');
+        } else {
+          logger.info('🟡 No action taken. Market conditions neutral.');
+        }
+      })
+      .catch((err) => {
+        logger.error('💥 Error fetching market snapshot:', err);
+      });
   } catch (err) {
-    console.error('❌ Failed to fetch price:', err);
-    return null;
+    logger.error('💥 Error during brain check execution:', err);
   }
 }
 
-// 🎯 Strategy Logic
-function analyzeMarket({ price, trend, volume, candle }) {
-  if (!price) return 'HOLD';
-  if (price < 2500) return 'BUY';
-  if (price > 3500) return 'SELL';
-  return 'HOLD';
+function manualTriggerBuy() {
+  logger.info('🟢 Manual BUY signal triggered by user.');
 }
 
-function shouldBuy(price) {
-  return price < 2500;
+function manualTriggerSell() {
+  logger.warn('🔴 Manual SELL signal triggered by user.');
 }
 
-function shouldSell(price) {
-  return price > 3500;
+// 🧠 Memory & Scoring System
+function adjustBrainMemory(scoreChange) {
+  brainMemoryScore += scoreChange;
+  brainMemoryScore = Math.max(0, Math.min(brainMemoryScore, 100));
+  logger.info(`🧠 Updated Brain Memory Score: ${brainMemoryScore}`);
 }
 
-// 🧠 Main Brain Function
-async function runBrainCheck(symbol = 'ETHUSDT') {
-  console.log('[🧠 BRAIN] ⏳ Running strategy check...');
-  const data = await fetchPrice(symbol);
-
-  if (!data || !data.price) {
-    console.log('[❌ ERROR] Price fetch failed.');
-    return 'HOLD';
-  }
-
-  const decision = analyzeMarket(data);
-
-  if (shouldBuy(data.price)) {
-    console.log(`[🟢 BUY] Signal at ${data.price}`);
-    return 'BUY';
-  }
-
-  if (shouldSell(data.price)) {
-    console.log(`[🔴 SELL] Signal at ${data.price}`);
-    return 'SELL';
-  }
-
-  console.log(`[🟡 HOLD] No signal at ${data.price}`);
-  return 'HOLD';
-}
-
-// 🧨 Manual Triggers
-async function manualTriggerBuy() {
-  console.log('🟢 [MANUAL] Forced BUY triggered.');
-  return 'BUY';
-}
-
-async function manualTriggerSell() {
-  console.log('🔴 [MANUAL] Forced SELL triggered.');
-  return 'SELL';
-}
-
-// 🔄 Export as browser global (for console access)
-window.CROAK_BRAIN = {
+// ✅ Export for backend use
+module.exports = {
   runBrainCheck,
   manualTriggerBuy,
   manualTriggerSell,
+  adjustBrainMemory,
 };
+
+// ✅ Setup for frontend if window exists
+if (typeof window !== 'undefined') {
+  window.CROAK_BRAIN = {
+    runBrainCheck,
+    manualTriggerBuy,
+    manualTriggerSell,
+    adjustBrainMemory,
+  };
+}
