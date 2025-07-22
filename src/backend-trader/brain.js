@@ -3,11 +3,35 @@ const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
 
 // 🧠 Core Brain Variables
-let brainMemoryScore = 50; // 61K V2 Brain Memory Sync base score
-let lastConfirmedBuy = null; // TP Extender will track this
+let brainMemoryScore = 50;
+let lastConfirmedBuy = null;
 
 // ------------------------------
-// Layer: CANDLE READER — TRILLIONS INTELLIGENCE LAYER
+// Core Versions and Brain Evolution Layers
+// ------------------------------
+function brainMemoryBias() {
+  const result = {
+    buySignal: false,
+    sellSignal: false,
+    confidence: 0,
+    reasons: [],
+  };
+
+  if (brainMemoryScore > 70) {
+    result.buySignal = true;
+    result.confidence += 10;
+    result.reasons.push('🧠 Bullish Memory Bias (V2-V5 Synced)');
+  } else if (brainMemoryScore < 30) {
+    result.sellSignal = true;
+    result.confidence += 10;
+    result.reasons.push('🧠 Bearish Memory Bias (V2-V5 Synced)');
+  }
+
+  return result;
+}
+
+// ------------------------------
+// Smart Layers & Trap Detection
 // ------------------------------
 function candlePatternReader(candle) {
   const result = {
@@ -17,7 +41,6 @@ function candlePatternReader(candle) {
     reasons: [],
   };
 
-  // Candle Pattern Reader Layer + Candle Confidence Score System™
   if (candle.green && candle.size === 'large') {
     result.buySignal = true;
     result.confidence += 20;
@@ -29,7 +52,6 @@ function candlePatternReader(candle) {
     result.reasons.push('🔴 Large Red Candle');
   }
 
-  // Candle Trap Filter Layer
   if (candle.wickTop && candle.bodySmall) {
     if (candle.red) {
       result.sellSignal = true;
@@ -58,9 +80,6 @@ function candlePatternReader(candle) {
   return result;
 }
 
-// ------------------------------
-// Layer: Volume + Momentum Validator & Smart Entry/Exit Filters
-// ------------------------------
 function volumeMomentumValidator(volume, trend) {
   const result = {
     buySignal: false,
@@ -82,9 +101,6 @@ function volumeMomentumValidator(volume, trend) {
   return result;
 }
 
-// ------------------------------
-// Layer: Risk Guard Layer v2 – Anti-Bogok BUY Protection™
-// ------------------------------
 function riskGuard(price, volume) {
   const result = {
     buySignal: false,
@@ -102,9 +118,6 @@ function riskGuard(price, volume) {
   return result;
 }
 
-// ------------------------------
-// Layer: Auto-Denial Veto™ – Final Judgment Layer
-// ------------------------------
 function autoDenialVeto(candle) {
   const result = {
     vetoActive: false,
@@ -119,33 +132,6 @@ function autoDenialVeto(candle) {
   return result;
 }
 
-// ------------------------------
-// Layer: 61K Quantum Core Brain & Memory Sync Layers (V2 to V5)
-// ------------------------------
-function brainMemoryBias() {
-  const result = {
-    buySignal: false,
-    sellSignal: false,
-    confidence: 0,
-    reasons: [],
-  };
-
-  if (brainMemoryScore > 70) {
-    result.buySignal = true;
-    result.confidence += 10;
-    result.reasons.push('🧠 Bullish Memory Bias');
-  } else if (brainMemoryScore < 30) {
-    result.sellSignal = true;
-    result.confidence += 10;
-    result.reasons.push('🧠 Bearish Memory Bias');
-  }
-
-  return result;
-}
-
-// ------------------------------
-// Layer: Dynamic Trade Filter, Hot Entry / Exit Scanners & Market Optimizer
-// ------------------------------
 function dynamicTradeFilter(trend, candle, volume) {
   const result = {
     buySignal: false,
@@ -167,9 +153,6 @@ function dynamicTradeFilter(trend, candle, volume) {
   return result;
 }
 
-// ------------------------------
-// Layer: Visual Sentiment Dashboard (stub for future extension)
-// ------------------------------
 function sentimentDashboard() {
   return {
     confidenceModifier: 0,
@@ -178,100 +161,73 @@ function sentimentDashboard() {
 }
 
 // ------------------------------
-// Layer: Full Market Analysis Integration
+// Unified Market Analysis Engine
 // ------------------------------
 function analyzeMarket({ price, trend, volume, candle }) {
-  let finalInsights = {
+  let result = {
     buySignal: false,
     sellSignal: false,
     confidence: 0,
-    reason: [],
+    reasons: [],
   };
 
   const veto = autoDenialVeto(candle);
-  if (veto.vetoActive) {
-    finalInsights.reason.push(...veto.reasons);
-    finalInsights.confidence = 0;
-    return finalInsights;
-  }
+  if (veto.vetoActive) return { ...result, reasons: veto.reasons, confidence: 0 };
 
   const risk = riskGuard(price, volume);
   if (risk.confidenceOverride !== null) {
-    finalInsights.sellSignal = risk.sellSignal;
-    finalInsights.confidence = risk.confidenceOverride;
-    finalInsights.reason.push(...risk.reasons);
-    return finalInsights;
+    return { sellSignal: risk.sellSignal, buySignal: false, confidence: 0, reasons: risk.reasons };
   }
 
-  const candleResults = candlePatternReader(candle);
-  if (candleResults.buySignal) finalInsights.buySignal = true;
-  if (candleResults.sellSignal) finalInsights.sellSignal = true;
-  finalInsights.confidence += candleResults.confidence;
-  finalInsights.reason.push(...candleResults.reasons);
-
-  const volumeResults = volumeMomentumValidator(volume, trend);
-  if (volumeResults.buySignal) finalInsights.buySignal = true;
-  if (volumeResults.sellSignal) finalInsights.sellSignal = true;
-  finalInsights.confidence += volumeResults.confidence;
-  finalInsights.reason.push(...volumeResults.reasons);
-
-  const brainResults = brainMemoryBias();
-  if (brainResults.buySignal) finalInsights.buySignal = true;
-  if (brainResults.sellSignal) finalInsights.sellSignal = true;
-  finalInsights.confidence += brainResults.confidence;
-  finalInsights.reason.push(...brainResults.reasons);
-
-  const dynamicResults = dynamicTradeFilter(trend, candle, volume);
-  if (dynamicResults.buySignal) finalInsights.buySignal = true;
-  if (dynamicResults.sellSignal) finalInsights.sellSignal = true;
-  finalInsights.confidence += dynamicResults.confidence;
-  finalInsights.reason.push(...dynamicResults.reasons);
-
-  const sentimentResults = sentimentDashboard();
-  finalInsights.confidence += sentimentResults.confidenceModifier;
-  finalInsights.reason.push(...sentimentResults.reasons);
-
-  finalInsights.confidence = Math.min(Math.max(finalInsights.confidence, 0), 100);
-
-  if (finalInsights.confidence > 60) {
-    brainMemoryScore = Math.min(brainMemoryScore + 2, 100);
-  } else if (finalInsights.confidence < 30) {
-    brainMemoryScore = Math.max(brainMemoryScore - 2, 0);
+  for (const layer of [
+    candlePatternReader(candle),
+    volumeMomentumValidator(volume, trend),
+    brainMemoryBias(),
+    dynamicTradeFilter(trend, candle, volume),
+    sentimentDashboard()
+  ]) {
+    if (layer.buySignal) result.buySignal = true;
+    if (layer.sellSignal) result.sellSignal = true;
+    result.confidence += layer.confidence || 0;
+    result.reasons.push(...(layer.reasons || []));
   }
 
-  finalInsights.brainMemoryScore = brainMemoryScore;
-  finalInsights.reasonLog = finalInsights.reason.join(' | ');
+  result.confidence = Math.min(Math.max(result.confidence, 0), 100);
 
-  return finalInsights;
+  if (result.confidence > 60) brainMemoryScore = Math.min(brainMemoryScore + 2, 100);
+  else if (result.confidence < 30) brainMemoryScore = Math.max(brainMemoryScore - 2, 0);
+
+  return result;
+}
+
+function shouldBuy(price) {
+  return false; // now handled by TP Extender
+}
+
+function shouldSell(price) {
+  return false; // now handled by TP Extender
 }
 
 // ------------------------------
-// TP EXTENDER LOGIC: Handles SELL only if there's a confirmed BUY
+// TP EXTENDER LOGIC
 // ------------------------------
-function tpExtender(decision) {
+function tpExtender(decision, price) {
   if (decision.buySignal) {
-    lastConfirmedBuy = {
-      time: Date.now(),
-      price: decision.price,
-      confidence: decision.confidence,
-    };
-    return { action: 'BUY', reasons: decision.reasonLog };
+    lastConfirmedBuy = { price, time: Date.now(), confidence: decision.confidence };
+    return { action: 'BUY', reasons: decision.reasons };
   }
-
   if (decision.sellSignal && lastConfirmedBuy) {
-    return { action: 'SELL', reasons: decision.reasonLog };
+    return { action: 'SELL', reasons: decision.reasons };
   }
-
-  return { action: 'HOLD', reasons: decision.reasonLog };
+  return { action: 'HOLD', reasons: decision.reasons };
 }
 
 // ------------------------------
-// Public Interface: Live Brain Signal
+// Quantum Heartbeat Engine
 // ------------------------------
 async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   try {
     const priceData = await fetchPrice(symbol);
-
     const dummyMarket = {
       price: priceData.price,
       trend: 'up',
@@ -289,9 +245,8 @@ async function getLiveBrainSignal(symbol = 'ETHUSDT') {
     };
 
     const result = analyzeMarket(dummyMarket);
-    const final = tpExtender({ ...result, price: priceData.price });
-
-    logger.info(`📈 Signal: ${final.action} | ${final.reasons}`);
+    const final = tpExtender(result, priceData.price);
+    logger.info(`📈 Signal: ${final.action} | ${final.reasons.join(' | ')}`);
     return final.action;
   } catch (err) {
     logger.error('❌ Signal Fetch Error:', err.message);
@@ -299,9 +254,7 @@ async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   }
 }
 
-// ------------------------------
-// Module Exports — AYAW TANGTANGA NI
-// ------------------------------
+// 📤 Module Exports — AYAW TANGTANGA NI
 module.exports = {
   analyzeMarket,
   shouldBuy,
