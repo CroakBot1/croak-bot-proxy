@@ -1,63 +1,73 @@
-// brain.js ✅ CROAK BOT 61K STRATEGY BRAIN
-const logger = require('./logger');
+// brain.js
 
+// 🔒 Core brain dependencies
+const logger = require('./logger'); // 🔒 DO NOT REMOVE
+const { fetchMarketSnapshot } = require('./priceFetcher'); // 🔒 DO NOT REMOVE
+
+// 🧠 Brain Memory Scoring System (placeholder, dynamic version optional)
 let brainMemoryScore = 50;
-let forceBuy = false; // 🔁 Toggleable from UI or dev console if needed
 
-function runStrategy({ price, history, indicators, wallet }) {
-  logger.heartbeat("Running 61K strategy check...");
+// ✅ Decision logic for BUY
+function shouldBuy(snapshot) {
+  try {
+    const price = snapshot.price;
+    const trend = snapshot.trend || 'neutral';
 
-  if (!price || !wallet) {
-    logger.warn("Missing price or wallet context.");
-    return { action: "SKIP", reason: "Missing data" };
+    if (trend === 'bullish' && brainMemoryScore > 45) {
+      logger.info('📈 BUY Signal: Trend bullish & memory score above 45');
+      return true;
+    }
+
+    if (price < snapshot.avgPrice && brainMemoryScore >= 50) {
+      logger.info('📉 BUY Signal: Price below average with healthy memory score');
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    logger.error('💥 Error in shouldBuy logic:', err);
+    return false;
   }
-
-  // 🧠 FORCE BUY OVERRIDE
-  if (forceBuy) {
-    logger.tradeSignal("BUY", { reason: "Force Buy Mode Active" });
-    return { action: "BUY", reason: "Force Buy Override" };
-  }
-
-  // 💡 BASIC STRATEGY SIMULATION
-  const shouldBuy = indicators.rsi < 30 && price < history.avg;
-  const shouldSell = indicators.rsi > 70 && price > history.avg;
-
-  if (shouldBuy) {
-    logger.tradeSignal("BUY", { rsi: indicators.rsi, avg: history.avg });
-    return { action: "BUY", reason: "RSI Low + Under Avg Price" };
-  }
-
-  if (shouldSell) {
-    logger.tradeSignal("SELL", { rsi: indicators.rsi, avg: history.avg });
-    return { action: "SELL", reason: "RSI High + Above Avg Price" };
-  }
-
-  logger.veto([
-    `RSI: ${indicators.rsi}`,
-    `Price: ${price}`,
-    `Avg: ${history.avg}`,
-    `MemoryScore: ${brainMemoryScore}`
-  ]);
-  return { action: "NONE", reason: "No Signal" };
 }
 
-function setForceBuy(enabled = true) {
-  forceBuy = enabled;
-  logger.warn(`⚠️ FORCE BUY MODE: ${forceBuy ? "ENABLED" : "DISABLED"}`);
+// ✅ Decision logic for SELL
+function shouldSell(snapshot) {
+  try {
+    const price = snapshot.price;
+    const trend = snapshot.trend || 'neutral';
+
+    if (trend === 'bearish' && brainMemoryScore < 60) {
+      logger.info('📉 SELL Signal: Trend bearish & memory score below 60');
+      return true;
+    }
+
+    if (price > snapshot.avgPrice && brainMemoryScore < 50) {
+      logger.info('📈 SELL Signal: Price above average with weak memory score');
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    logger.error('💥 Error in shouldSell logic:', err);
+    return false;
+  }
 }
 
-function getForceBuy() {
-  return forceBuy;
+// 🧠 Brain Evolution Memory Adjuster
+function adjustBrainMemory(result) {
+  if (result === 'win') {
+    brainMemoryScore = Math.min(100, brainMemoryScore + 3);
+  } else if (result === 'loss') {
+    brainMemoryScore = Math.max(0, brainMemoryScore - 5);
+  }
+
+  logger.info(`🧠 Brain Memory Updated: ${brainMemoryScore}`);
 }
 
-// === OPTIONAL DEV TEST: Force buy once on startup ===
-if (process.env.FORCE_BUY === 'true') {
-  setForceBuy(true);
-  logger.warn("🚨 DEV MODE: Force Buy is ENABLED on startup!");
-}
-
+// 📤 Export
 module.exports = {
-  runStrategy,
-  setForceBuy,
-  getForceBuy,
+  shouldBuy,
+  shouldSell,
+  adjustBrainMemory,
+  brainMemoryScore,
 };
