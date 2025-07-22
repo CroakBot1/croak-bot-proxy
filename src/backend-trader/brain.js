@@ -1,84 +1,95 @@
-// 🔒 DO NOT REMOVE — dependencies used across brain system
+// ⛓️ Required Connections (always keep)
 const { fetchPrice, fetchMarketSnapshot } = require('./priceFetcher');
 const logger = require('./logger');
 
-// 🧠 Core Brain Variables
+// 🧠 Core Brain Variable (used by memory scoring system)
 let brainMemoryScore = 50;
-const TOTAL_LAYERS = 20000;
+const TOTAL_LAYERS = 61000;
 
-// === Individual Layer Handlers (assumed imported or defined elsewhere) ===
-// Dummy placeholders — these should be real imported modules
-function runRSILayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runMACDLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runSupportResistanceLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runTrapDetectionLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runMetaLearningLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runSelfEvolvingLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runDynamicTPStopLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runMultiTimeframeLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
-function runFinalJudgmentLayer({ id, candleData, state }) { return { type: 'HOLD', confidence: 1 }; }
+// === Layer Signal Logic ===
+function getLayerSignal(layerId, marketData) {
+  const { price, volume, trend, volatility, momentum, candle } = marketData;
 
-// === Layer Execution Logic ===
-function runSmartLayer({ id, candleData, state }) {
-  if (id <= 50) return runRSILayer({ id, candleData, state });
-  if (id <= 100) return runMACDLayer({ id, candleData, state });
-  if (id <= 150) return runSupportResistanceLayer({ id, candleData, state });
-  if (id <= 500) return runTrapDetectionLayer({ id, candleData, state });
-  if (id <= 1000) return runMetaLearningLayer({ id, candleData, state });
-  if (id <= 5000) return runSelfEvolvingLayer({ id, candleData, state });
-  if (id <= 10000) return runDynamicTPStopLayer({ id, candleData, state });
-  if (id <= 15000) return runMultiTimeframeLayer({ id, candleData, state });
-  if (id <= 20000) return runFinalJudgmentLayer({ id, candleData, state });
-  return null;
-}
-
-// === Aggregation of All Layer Signals ===
-function evaluateAllLayers(candleData, state) {
-  const allSignals = [];
-
-  for (let i = 1; i <= TOTAL_LAYERS; i++) {
-    const signal = runSmartLayer({ id: i, candleData, state });
-    if (signal) allSignals.push(signal);
+  // 🔍 Trap Detection Filters
+  if (layerId >= 100 && layerId < 500) {
+    if (price % 5 < 0.5 && volatility > 0.6) return 'SELL';
+    if (momentum < -0.3 && candle.pattern === 'reversal') return 'SELL';
   }
 
-  return mergeSignals(allSignals);
+  // 🧱 TP EXTENDER
+  if (layerId >= 500 && layerId < 1000) {
+    if (trend > 0.5 && momentum > 0.5) return 'HOLD';
+    if (trend < -0.5 && momentum < -0.5) return 'HOLD';
+  }
+
+  // 🔒 Risk Guard Layer v2
+  if (layerId >= 1000 && layerId < 2000) {
+    if (volume < 1000 && volatility > 0.8) return 'HOLD';
+  }
+
+  // 📼 Live Candle Memory Scanner
+  if (layerId >= 2000 && layerId < 3000) {
+    if (candle.previous === 'trap' && momentum < 0) return 'SELL';
+  }
+
+  // 📊 Candle Pattern Reader
+  if (layerId >= 3000 && layerId < 4000) {
+    if (candle.pattern === 'bullish engulfing') return 'BUY';
+    if (candle.pattern === 'bearish engulfing') return 'SELL';
+  }
+
+  // 📈 Momentum Validator + Volume
+  if (layerId >= 4000 && layerId < 5000) {
+    if (momentum > 0.6 && volume > 10000) return 'BUY';
+    if (momentum < -0.6 && volume > 10000) return 'SELL';
+  }
+
+  // 🔍 Hot Entry / Exit Scanners
+  if (layerId >= 5000 && layerId < 8000) {
+    if (trend > 0.4 && volatility < 0.5) return 'BUY';
+    if (trend < -0.4 && volatility < 0.5) return 'SELL';
+  }
+
+  // 🧠 61K V4 Self-Evolving Engine
+  if (layerId >= 8000 && layerId < 12000) {
+    if (brainMemoryScore > 75) return 'BUY';
+    if (brainMemoryScore < 25) return 'SELL';
+  }
+
+  // 🌀 Real-Time Candle Decision Engine
+  if (layerId >= 12000 && layerId < 16000) {
+    return trend > 0 ? 'BUY' : trend < 0 ? 'SELL' : 'HOLD';
+  }
+
+  // 💹 External Strategy Plugin Port
+  if (layerId >= 16000 && layerId < 20000) {
+    if (momentum > 0.3 && price % 3 < 1.5) return 'BUY';
+    if (momentum < -0.3 && price % 3 >= 1.5) return 'SELL';
+  }
+
+  // 🧠 Main 61K Quantum Core Layers
+  if (layerId >= 20000) {
+    const modPrice = (price % 10) / 10;
+    return modPrice > 0.7 ? 'BUY' : modPrice < 0.3 ? 'SELL' : 'HOLD';
+  }
+
+  return 'HOLD';
 }
 
-// === Signal Merging ===
+// === Signal Fusion Engine ===
 function mergeSignals(signals) {
-  let buyVotes = 0;
-  let sellVotes = 0;
-  let holdVotes = 0;
-  let totalConfidence = 0;
+  const counts = { BUY: 0, SELL: 0, HOLD: 0 };
+  signals.forEach(sig => counts[sig]++);
 
-  for (const signal of signals) {
-    const confidence = signal.confidence || 1;
-    totalConfidence += confidence;
+  const weightedBuy = counts.BUY + brainMemoryScore / 10;
+  const weightedSell = counts.SELL + (100 - brainMemoryScore) / 10;
 
-    if (signal.type === 'BUY') buyVotes += confidence;
-    else if (signal.type === 'SELL') sellVotes += confidence;
-    else holdVotes += confidence;
-  }
-
-  const net = buyVotes - sellVotes;
-
-  const dominantAction = net > 0.1 * totalConfidence
-    ? 'BUY'
-    : net < -0.1 * totalConfidence
-    ? 'SELL'
-    : 'HOLD';
-
-  const strength = Math.abs(net) / totalConfidence;
-
-  return {
-    action: dominantAction,
-    strength: Math.min(1, strength),
-    confidenceScore: totalConfidence,
-    votes: { buy: buyVotes, sell: sellVotes, hold: holdVotes }
-  };
+  if (weightedBuy > weightedSell && weightedBuy > counts.HOLD) return 'BUY';
+  if (weightedSell > weightedBuy && weightedSell > counts.HOLD) return 'SELL';
+  return 'HOLD';
 }
 
-// === Optional Rule-Based Decision Logic ===
+// 📊 Decision-Making Functions
 function analyzeMarket({ price, trend, volume, candle }) {
   return trend > 0.2 ? 'BUY' : trend < -0.2 ? 'SELL' : 'HOLD';
 }
@@ -93,22 +104,31 @@ function shouldSell(price) {
 
 // === Core Brain Loop ===
 async function runBrainCycle() {
-  logger.info('⏳ Running diversified brain cycle...');
-
+  logger.info('⏳ Running 61K strategy check...');
   try {
     const marketData = await fetchMarketSnapshot();
-    const finalDecision = evaluateAllLayers(marketData, { memoryScore: brainMemoryScore });
 
-    logger.info(`🧠 Brain Decision: ${finalDecision.action} (confidence: ${finalDecision.strength})`);
+    const layerSignals = [];
+    for (let i = 1; i <= TOTAL_LAYERS; i++) {
+      const signal = getLayerSignal(i, marketData);
+      layerSignals.push(signal);
+    }
 
-    return finalDecision;
+    const finalSignal = mergeSignals(layerSignals);
+    logger.info(`🧠 Brain Decision: ${finalSignal}`);
+
+    return {
+      layerSignals,
+      memoryWeightedSignal: finalSignal,
+      finalDecision: finalSignal
+    };
   } catch (error) {
     logger.error('💥 Error during brain cycle:', error);
     return null;
   }
 }
 
-// === Public Interface ===
+// 📡 Public Interface
 async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   const priceData = await fetchPrice(symbol);
   const decision = analyzeMarket(priceData);
@@ -125,13 +145,11 @@ async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   return 'HOLD';
 }
 
-// === Export API ===
+// 📤 Module Exports — AYAW TANGTANGA NI
 module.exports = {
-  evaluateAllLayers,
-  mergeSignals,
+  runBrainCycle,
   analyzeMarket,
   shouldBuy,
   shouldSell,
   getLiveBrainSignal,
-  runBrainCycle,
 };
