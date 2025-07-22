@@ -82,6 +82,24 @@ async function getLiveBrainSignal(symbol = 'ETHUSDT') {
   return 'HOLD';
 }
 
+// === FORCED EXECUTION TEST ONLY ===
+async function forceBuyExecution() {
+  logger.warn("🚨 FORCING BUY TRADE (TEST ONLY)");
+
+  try {
+    await axios.post("http://localhost:3000/api/execute", {
+      type: "buy",
+      amount: EXECUTION_AMOUNT,
+    });
+    logger.info("✅ FORCED BUY executed.");
+  } catch (err) {
+    logger.error("❌ Failed to FORCE BUY:", err.message);
+  }
+}
+
+// Optional: run it once during startup (for test only)
+forceBuyExecution(); // ⚠️ Comment this out after testtest
+
 // === Exports — AYAW TANGTANGA NI ===
 module.exports = {
   analyzeMarket,
