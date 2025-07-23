@@ -1,46 +1,40 @@
-// signal.js
+// == SIGNAL.JS ==
+// Price Signal Detector + Executor Trigger
 
-const { fetchPrice, getFundingRate, getLongShortRatio, getOpenInterest, getVolumeStats } = require('./priceFetcher');
 const logger = require('./logger');
+const { getCurrentPrice } = require('./priceFetcher');
+const { swapEthToUsdc } = require('./executor');
 
-// Validate signal before executing trade
-async function validateSignal({ action, symbol = 'ETHUSDT', amount }) {
-  logger.info(`🚦 Signal received: ${action} ${symbol} for amount ${amount}`);
+// ✅ Strategy Thresholds
+const BUY_THRESHOLD = 2850;   // Example: Buy ETH below $2850
+const SELL_THRESHOLD = 3550;  // Example: Sell ETH above $3550
 
+// ✅ Trade Amount in ETH
+const TRADE_AMOUNT_ETH = 0.01;
+
+// ✅ Signal Check Loop
+async function checkSignalAndExecute() {
   try {
-    const currentPrice = await fetchPrice(symbol);
-    const funding = await getFundingRate(symbol);
-    const longShort = await getLongShortRatio(symbol);
-    const openInterest = await getOpenInterest(symbol);
-    const volumeStats = await getVolumeStats(symbol);
+    logger.info("⏳ Running 61K strategy check...");
 
-    // Example decision logic (adjustable)
-    const isBullish = funding.fundingRate > 0 && longShort.longShortRatio < 1.5;
-    const isBearish = funding.fundingRate < 0 && longShort.longShortRatio > 1.5;
+    const ethPrice = await getCurrentPrice();
+    logger.info("📈 ETH Current Price:", ethPrice);
 
-    let allowTrade = false;
-    if (action === 'BUY' && isBullish) allowTrade = true;
-    if (action === 'SELL' && isBearish) allowTrade = true;
+    if (ethPrice < BUY_THRESHOLD) {
+      logger.info("✅ BUY Signal Detected 🟢");
+      await swapEthToUsdc(TRADE_AMOUNT_ETH); // ⚡ Execute trade
+    } else if (ethPrice > SELL_THRESHOLD) {
+      logger.info("⚠️ SELL Signal Detected 🔴");
+      logger.warn("💤 SELL logic not implemented yet...");
+      // TODO: swapUsdcToEth(); if needed
+    } else {
+      logger.info("⏸️ No clear signal. Waiting...");
+    }
 
-    logger.info(`📈 Price: $${currentPrice} | 📊 Funding: ${funding.fundingRate} | 🧠 Long/Short: ${longShort.longShortRatio}`);
-
-    return {
-      success: allowTrade,
-      reason: allowTrade ? "Signal validated." : "Market conditions not favorable.",
-      data: {
-        price: currentPrice,
-        fundingRate: funding.fundingRate,
-        longShortRatio: longShort.longShortRatio,
-        openInterest,
-        volumeStats,
-      }
-    };
   } catch (err) {
-    logger.error('⚠️ Error during signal validation:', err);
-    return { success: false, reason: 'Signal validation error.' };
+    logger.error("💥 Error during signal check:", err);
   }
 }
 
-module.exports = {
-  validateSignal
-};
+// ✅ Auto-loop every 30s
+setInterval(checkSignalAndExecute, 30 * 1000);
