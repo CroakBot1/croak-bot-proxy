@@ -1,22 +1,26 @@
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors');
 const app = express();
+app.use(cors());
+
+const BYBIT_API = "https://api.bybit.com/v5/market/tickers?category=linear&symbol=ETHUSDT";
 
 app.get('/', async (req, res) => {
   try {
-    const response = await axios.get('https://api.bybit.com/v5/market/tickers?category=linear');
-    const eth = response.data.result.list.find(x => x.symbol === 'ETHUSDT');
+    const response = await axios.get(BYBIT_API);
+    const ticker = response.data.result.list[0];
+
     res.json({
-      symbol: 'ETHUSDT',
-      price: parseFloat(eth.lastPrice),
-      markPrice: parseFloat(eth.markPrice),
-      openInterest: parseFloat(eth.openInterest),
-      turnover24h: parseFloat(eth.turnover24h)
+      price: ticker.lastPrice,
+      markPrice: ticker.markPrice,
+      openInterest: ticker.openInterest,
+      turnover24h: ticker.turnover24h
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to fetch from Bybit", details: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Bybit Data Fetcher Running @ ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
