@@ -1,33 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOG_FILE = path.join(__dirname, 'croakbot.log');
+const logFile = path.join(__dirname, 'log.txt');
 
 function timestamp() {
   return new Date().toISOString();
 }
 
-function writeToFile(level, message) {
-  fs.appendFile(LOG_FILE, `[${timestamp()}] [${level}] ${message}\n`, () => {});
-}
-
-function info(...args) {
-  const msg = args.join(' ');
-  console.log(`[${timestamp()}] [ℹ️ INFO]`, msg);
-  writeToFile('INFO', msg);
-}
-
-function error(...args) {
-  const msg = args.join(' ');
-  console.error(`[${timestamp()}] [❌ ERROR]`, msg);
-  writeToFile('ERROR', msg);
-}
-
-function heartbeat(msg = "💓 CROAK Running") {
-  console.log(`[${timestamp()}] [💓 HEARTBEAT] ${msg}`);
-  writeToFile('HEARTBEAT', msg);
+function log(level, msg) {
+  const logMsg = `[${timestamp()}] [${level}] ${msg}`;
+  fs.appendFile(logFile, logMsg + '\n', () => {});
+  console.log(logMsg);
 }
 
 module.exports = {
-  info, error, heartbeat
+  info: (...args) => log('INFO', args.join(' ')),
+  error: (...args) => log('ERROR', args.join(' ')),
 };
