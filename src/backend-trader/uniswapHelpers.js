@@ -8,21 +8,22 @@ function getDeadline() {
   return Math.floor(Date.now() / 1000) + 60;
 }
 
-function toRaw(amount) {
-  return ethers.parseUnits(amount.toString(), 18);
+function toRaw(amount, decimals = 18) {
+  return ethers.parseUnits(amount.toString(), decimals);
 }
 
 async function getSwapTx({ wallet, amountIn, tokenIn, tokenOut }) {
   const router = new ethers.Contract(process.env.UNISWAP_ROUTER, swapRouterAbi, wallet);
-  const rawAmount = toRaw(amountIn);
+  const rawAmountIn = toRaw(amountIn);
+  const fee = 500;
 
   const params = {
     tokenIn,
     tokenOut,
-    fee: 500,
+    fee,
     recipient: await wallet.getAddress(),
     deadline: getDeadline(),
-    amountIn: rawAmount,
+    amountIn: rawAmountIn,
     amountOutMinimum: 0,
     sqrtPriceLimitX96: 0
   };
@@ -33,9 +34,11 @@ async function getSwapTx({ wallet, amountIn, tokenIn, tokenOut }) {
   return {
     to: process.env.UNISWAP_ROUTER,
     data,
-    value: tokenIn === ethers.ZeroAddress ? rawAmount : 0,
+    value: tokenIn === ethers.ZeroAddress ? rawAmountIn : 0,
     gasLimit: ethers.hexlify(750000)
   };
 }
 
-module.exports = { getSwapTx };
+module.exports = {
+  getSwapTx
+};
