@@ -1,8 +1,8 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { startAutoLoop } = require('./src/backend-trader/brain');
+
+const { startAutoLoop, runStrategy } = require('./src/backend-trader/brain');
 const { executeTrade } = require('./src/backend-trader/executor');
 const logger = require('./src/backend-trader/logger');
 
@@ -11,24 +11,27 @@ const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 
-// ✅ Health check
+// ✅ Health check — for uptime monitoring & cron job pings
 app.get('/', (req, res) => {
-  res.send('✅ Croak Bot Cronjob ping received at ' + new Date().toISOString());
+  const msg = '✅ Croak Bot Cronjob ping received at ' + new Date().toISOString();
+  logger.info(msg);
+  res.send(msg);
 });
 
-// ✅ Optional manual trigger
+// ✅ Manual trigger for fallback or test execution
 app.get('/trigger', async (req, res) => {
   try {
-    const { runStrategy } = require('./src/backend-trader/brain');
     await runStrategy();
-    res.send('✅ Strategy executed at ' + new Date().toISOString());
+    const msg = '✅ Manual strategy triggered at ' + new Date().toISOString();
+    logger.info(msg);
+    res.send(msg);
   } catch (err) {
-    console.error('❌ Error running strategy:', err);
+    logger.error('❌ Trigger error:', err.message);
     res.status(500).send('Error executing strategy.');
   }
 });
 
-// ✅ Optional manual BUY/SELL (useful for testing)
+// ✅ Manual BUY and SELL endpoints (optional but useful for UI or debugging)
 app.get('/buy', async (req, res) => {
   try {
     const result = await executeTrade('BUY', 0.001);
@@ -49,8 +52,8 @@ app.get('/sell', async (req, res) => {
   }
 });
 
-// ✅ Start server and loop
+// ✅ Start server + strategy loop
 app.listen(PORT, () => {
-  logger.info(`🚀 Croak Cronjob Server running on port ${PORT}`);
-  startAutoLoop(); // 🔁 Starts 24/7 strategy loop
+  logger.info(`🚀 Croak Bot Server running on port ${PORT}`);
+  startAutoLoop(); // 🔁 Begin auto 24/7 strategy loop
 });
