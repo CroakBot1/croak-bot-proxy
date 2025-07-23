@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const logger = require('./logger');
-const signalRoutes = require('./signal'); // ✅ make sure this exists
+const signalRoutes = require('./signal');
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Mount route at /signal
+// ✅ MOUNT CORRECTLY AT /signal
 app.use('/signal', signalRoutes);
 
 app.get('/', (req, res) => {
