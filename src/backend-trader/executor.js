@@ -1,4 +1,4 @@
-require('dotenv').config();
+// executor.js
 const { ethers } = require('ethers');
 const { getSwapTx } = require('./uniswapHelpers');
 const logger = require('./logger');
