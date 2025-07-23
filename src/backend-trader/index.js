@@ -11,18 +11,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ✅ Middlewares
-app.use(cors()); // Allow frontend to access this backend
-app.use(bodyParser.json());
+app.use(cors());                // 🔓 Allow requests from frontend (fixes fetch error)
+app.use(bodyParser.json());    // 📦 Enable JSON body parsing
 
-// ✅ Mount /signal route
-app.use('/', signalRoutes); // now /signal is correctly accessible
+// ✅ Mount signal routes at /signal endpoint
+app.use('/signal', signalRoutes);  // 👈 KEEP THIS — don't move to root ('/')
 
-// ✅ Health Check
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('🟢 Croak Executor Backend is Alive');
 });
 
-// ✅ Start server
+// ✅ Start the server
 app.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);
 });
