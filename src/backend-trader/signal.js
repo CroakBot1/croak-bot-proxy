@@ -1,68 +1,30 @@
 // signal.js
-
+const { executeBuy, executeSell } = require('./executor');
 const logger = require('./logger');
-const { fetchMarketSnapshot } = require('./priceFetcher');
-const brain = require('./brain');
-const { executeSwap } = require('./executor');
-const { USDC_ADDRESS, WETH_ADDRESS } = require('./uniswapHelpers');
 
-// Auto-signal runner
-async function runSignalCheck() {
-  try {
-    const snapshot = await fetchMarketSnapshot();
-    logger.info('📦 Market Snapshot:', snapshot);
+async function handleSignal(req, res) {
+  const { action, amount } = req.body;
 
-    const shouldBuy = brain.shouldBuy(snapshot);
-    const shouldSell = brain.shouldSell(snapshot);
+  logger.info(`📡 Received signal: ${action} | Amount: ${amount} ETH`);
 
-    if (shouldBuy) {
-      logger.info('🚀 Signal says BUY. Preparing swap...');
-      await executeBuy(snapshot);
-      return 'buy';
-    }
+  if (!action || !amount) {
+    return res.status(400).json({ error: 'Missing action or amount' });
+  }
 
-    if (shouldSell) {
-      logger.info('🔻 Signal says SELL. Preparing swap...');
-      await executeSell(snapshot);
-      return 'sell';
-    }
+  let txHash;
+  if (action === 'BUY') {
+    txHash = await executeBuy(amount);
+  } else if (action === 'SELL') {
+    txHash = await executeSell(amount);
+  } else {
+    return res.status(400).json({ error: 'Invalid action' });
+  }
 
-    logger.info('🛑 No trade signal at this price.');
-    return 'hold';
-  } catch (err) {
-    logger.error('💥 Signal Check Error:', err.message || err);
-    return 'error';
+  if (txHash) {
+    res.json({ success: true, txHash });
+  } else {
+    res.status(500).json({ success: false, error: 'Execution failed' });
   }
 }
 
-// Buy ETH with USDC
-async function executeBuy(snapshot) {
-  const amountIn = "5"; // USDC (adjust based on your logic or config)
-
-  await executeSwap({
-    amountIn,
-    tokenIn: USDC_ADDRESS,
-    tokenOut: WETH_ADDRESS,
-    slippage: 0.01,
-  });
-
-  brain.adjustBrainMemory('win'); // or adjust based on outcome
-}
-
-// Sell ETH for USDC
-async function executeSell(snapshot) {
-  const amountIn = "0.002"; // ETH (adjust based on your logic or config)
-
-  await executeSwap({
-    amountIn,
-    tokenIn: WETH_ADDRESS,
-    tokenOut: USDC_ADDRESS,
-    slippage: 0.01,
-  });
-
-  brain.adjustBrainMemory('win'); // or adjust based on outcome
-}
-
-module.exports = {
-  runSignalCheck,
-};
+module.exports = { handleSignal };
