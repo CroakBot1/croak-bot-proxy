@@ -1,14 +1,16 @@
 {
-  "name": "croak-uniswap-executor",
+  "name": "croak-backend-trader",
   "version": "1.0.0",
-  "description": "Execution-only backend for CROAK BOT via Uniswap",
+  "description": "Backend Uniswap Executor for Croak Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "ethers": "^6.8.1",
+    "axios": "^1.6.8",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "dotenv": "^16.3.1"
+    "web3": "^1.10.4"
   }
 }
