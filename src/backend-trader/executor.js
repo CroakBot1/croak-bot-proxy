@@ -1,55 +1,68 @@
-// == executor.js ==
-// 💸 Handles Uniswap buy/sell execution on Base via Uniswap V3
+// executor.js
 
-require('dotenv').config();
 const { ethers } = require('ethers');
-const { getSwapTx } = require('./uniswapHelpers');
+const {
+  getSwapTx,
+  WETH_ADDRESS,
+  USDC_ADDRESS
+} = require('./uniswapHelpers');
 const logger = require('./logger');
 
-// 🔒 Environment Variables
+// 🔐 PRIVATE
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET = process.env.WALLET;
-const RPC_URL = process.env.RPC_URL;
-
-// 🔗 Set up provider and signer
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org'); // Replace with real Base RPC
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// 🔄 Swap Executor
-async function executeSwap({ amountIn, tokenIn, tokenOut, slippage = 0.01 }) {
-  try {
-    logger.info('🔐 Connected to wallet:', WALLET);
-    logger.info('🧠 EXEC SWAP | Wallet:', WALLET);
-    logger.info('🧪 Params:', tokenIn, '➡️', tokenOut, '| Amount:', amountIn, '| Slippage:', slippage);
+// === BUY FUNCTION (USDC → WETH) ===
+async function executeBuy(amountInUSDC) {
+  try {
+    logger.info(`🔁 Preparing BUY tx | Amount: ${amountInUSDC} USDC`);
 
-    const tx = await getSwapTx({
-      wallet,
-      amountIn,
-      tokenIn,
-      tokenOut,
-      slippage,
-    });
+    const txConfig = await getSwapTx({
+      wallet,
+      amountIn: amountInUSDC,
+      tokenIn: USDC_ADDRESS,
+      tokenOut: WETH_ADDRESS,
+      slippage: 0.01
+    });
 
-    const sent = await wallet.sendTransaction(tx);
-    logger.info('📤 TX Sent:', sent.hash);
-    const receipt = await sent.wait();
-    logger.info('✅ TX Confirmed:', receipt.transactionHash);
-    return receipt;
-  } catch (err) {
-    logger.error('💥 Swap Error:', err?.message || err);
-    return null;
-  }
+    const tx = await wallet.sendTransaction(txConfig);
+    logger.info(`🟢 BUY tx sent: ${tx.hash}`);
+    await tx.wait();
+    logger.info(`✅ BUY tx confirmed`);
+  } catch (err) {
+    logger.error('❌ BUY FAILED:', err.message || err);
+  }
 }
 
-module.exports = { executeSwap };
+// === SELL FUNCTION (WETH → USDC) ===
+async function executeSell(amountInWETH) {
+  try {
+    logger.info(`🔁 Preparing SELL tx | Amount: ${amountInWETH} WETH`);
 
-// ✅ Test Trigger Block (only runs if file is run directly)
-if (require.main === module) {
-  const { USDC_ADDRESS, WETH_ADDRESS } = require('./uniswapHelpers');
-  executeSwap({
-    amountIn: "0.0005", // ETH
-    tokenIn: WETH_ADDRESS,
-    tokenOut: USDC_ADDRESS,
-    slippage: 0.01,
-  });
+    const txConfig = await getSwapTx({
+      wallet,
+      amountIn: amountInWETH,
+      tokenIn: WETH_ADDRESS,
+      tokenOut: USDC_ADDRESS,
+      slippage: 0.01
+    });
+
+    const tx = await wallet.sendTransaction(txConfig);
+    logger.info(`🔻 SELL tx sent: ${tx.hash}`);
+    await tx.wait();
+    logger.info(`✅ SELL tx confirmed`);
+  } catch (err) {
+    logger.error('❌ SELL FAILED:', err.message || err);
+  }
 }
+
+// === SAMPLE CALL (REMOVE in production) ===
+// (Uncomment to test directly)
+// executeBuy(20); // Buy WETH using 20 USDC
+// executeSell(0.01); // Sell 0.01 WETH for USDC
+
+module.exports = {
+  executeBuy,
+  executeSell
+};
