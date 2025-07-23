@@ -1,44 +1,26 @@
-// index.js
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const logger = require('./logger');
-const signalRoutes = require('./61k');
-const { startAutoLoop } = require('./autoLoop');
 const { executeTrade } = require('./executor');
+const { getLongShortRatio } = require('./priceFetcher');
+const logger = require('./logger');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const AMOUNT = 0.001;
+const INTERVAL = 15000;
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use('/61k', signalRoutes);
-
-app.get('/', (req, res) => {
-  res.send('✅ Croak 24/7 Executor Running...');
-});
-
-// 🔁 Manual triggers via GET
-app.get('/buy', async (req, res) => {
+async function runStrategy() {
   try {
-    const result = await executeTrade('BUY', 0.001);
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    const ratio = await getLongShortRatio();
+    const action = parseFloat(ratio.longShortRatio) > 1.2 ? 'SELL' : 'BUY';
+    logger.info(`🧠 Strategy decision: ${action} | Ratio: ${ratio.longShortRatio}`);
+    const result = await executeTrade(action, AMOUNT);
+    logger.info(`✅ Executed ${action}: TX Hash: ${result.hash || 'N/A'}`);
+  } catch (err) {
+    logger.error('❌ Strategy error:', err.message);
   }
-});
+}
 
-app.get('/sell', async (req, res) => {
-  try {
-    const result = await executeTrade('SELL', 0.001);
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+function startAutoLoop() {
+  logger.info('🔁 24/7 auto-trading loop started...');
+  runStrategy();
+  setInterval(runStrategy, INTERVAL);
+}
 
-app.listen(PORT, () => {
-  logger.info(`🚀 Server live on port ${PORT}`);
-  startAutoLoop();
-});
+module.exports = { startAutoLoop };
