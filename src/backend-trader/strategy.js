@@ -33,17 +33,14 @@ function analyzeCandle(candle) {
 // === Core Modules Below ===
 
 function computeConfidence(candle) {
-    // 🧠 Trillions/Billions Confidence Logic
     let score = 0;
     if (candle.volume > 1_000_000) score += 5;
     if (candle.close > candle.open) score += 3;
     if (Math.abs(candle.close - candle.open) / candle.open > 0.02) score += 2;
-
     return Math.min(10, score);
 }
 
 function getVolumeMomentumSentiment(candle) {
-    // 📈 Volume + Momentum Validator
     const momentum = candle.close - candle.open;
     if (momentum > 0 && candle.volume > 500_000) return 'bullish';
     if (momentum < 0 && candle.volume > 500_000) return 'bearish';
@@ -51,23 +48,19 @@ function getVolumeMomentumSentiment(candle) {
 }
 
 function trapDetectorV3(candle) {
-    // 🧩 Trap Detection Filter Layer v3
     const wickSize = Math.abs(candle.high - candle.low);
     const bodySize = Math.abs(candle.close - candle.open);
     return bodySize < wickSize * 0.3;
 }
 
 function readCandlePattern(candle) {
-    // 📊 Candle Pattern Reader Layer
     if (candle.open < candle.close && candle.low < candle.open) return 'hammer';
     if (candle.open > candle.close && candle.high > candle.open) return 'shooting_star';
     return 'neutral';
 }
 
 function computeFinalDecision({ confidenceScore, sentiment, isTrap, pattern, score }) {
-    // 🧠 Full Decision Engine w/ Auto-Denial Veto + Reversal Trap + TP Extender
-
-    if (isTrap) return 'deny'; // 🚫 Auto-Denial Veto™
+    if (isTrap) return 'deny';
 
     if (pattern === 'hammer' && sentiment === 'bullish' && confidenceScore >= 7) return 'buy';
     if (pattern === 'shooting_star' && sentiment === 'bearish' && confidenceScore >= 7) return 'sell';
@@ -78,7 +71,23 @@ function computeFinalDecision({ confidenceScore, sentiment, isTrap, pattern, sco
     return 'hold';
 }
 
+// === 🔥 Fire Commands Below (safe to call manually) ===
+
+function fireBuy(reason = "Manual Trigger") {
+    memory.lastDecision = 'buy';
+    logger.warn(`🔥 Forced BUY activated! Reason: ${reason}`);
+    return 'buy';
+}
+
+function fireSell(reason = "Manual Trigger") {
+    memory.lastDecision = 'sell';
+    logger.warn(`🔥 Forced SELL activated! Reason: ${reason}`);
+    return 'sell';
+}
+
 module.exports = {
     analyzeCandle,
     memory,
+    fireBuy,
+    fireSell
 };
