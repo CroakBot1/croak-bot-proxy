@@ -1,88 +1,100 @@
-// executor.js
+// == EXECUTOR.JS ==
+// Uniswap V3 Token Swap Executor (ETH ⇄ USDC)
+
 require('dotenv').config();
-const Web3 = require('web3');
-const axios = require('axios');
+const { ethers } = require("ethers");
+const { Token } = require('@uniswap/sdk-core');
+const { abi: SWAP_ROUTER_ABI } = require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json');
 
-// 🔗 Set up Web3
-const web3 = new Web3(process.env.BASE_RPC);
-const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
-web3.eth.accounts.wallet.add(account);
+const logger = require('./logger');
+const { getCurrentPrice } = require('./priceFetcher');
 
-// 🧠 Token addresses (BASE network)
-const UNISWAP_ROUTER = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86';
-const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eb48'; // Mainnet USDC
-const WETH = '0xC02aaa39b223FE8D0a0e5C4F27eAD9083C756Cc2'; // Mainnet WETH
+// ENV CONFIG
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const WALLET = process.env.WALLET;
+const BASE_RPC = process.env.BASE_RPC;
 
-// ⛽ Gas settings
-const GAS_LIMIT = 300000;
+const provider = new ethers.JsonRpcProvider(BASE_RPC);
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-const routerABI = [ // 💡 Only the required swapExactETHForTokens and swapExactTokensForETH
-  {
-    "name": "swapExactETHForTokens",
-    "type": "function",
-    "stateMutability": "payable",
-    "inputs": [
-      { "name": "amountOutMin", "type": "uint256" },
-      { "name": "path", "type": "address[]" },
-      { "name": "to", "type": "address" },
-      { "name": "deadline", "type": "uint256" }
-    ],
-    "outputs": [{ "name": "amounts", "type": "uint256[]" }]
-  },
-  {
-    "name": "swapExactTokensForETH",
-    "type": "function",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      { "name": "amountIn", "type": "uint256" },
-      { "name": "amountOutMin", "type": "uint256" },
-      { "name": "path", "type": "address[]" },
-      { "name": "to", "type": "address" },
-      { "name": "deadline", "type": "uint256" }
-    ],
-    "outputs": [{ "name": "amounts", "type": "uint256[]" }]
+// Constants
+const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564'; // Uniswap V3 Router
+const USDC_ADDRESS = '0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606eb48';
+const ETH_ADDRESS = '0xC02aaA39b223FE8D0A0E5C4F27eAD9083C756Cc2';
+const POOL_FEE = 3000;
+
+const swapRouter = new ethers.Contract(SWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, wallet);
+
+// == Swap ETH → USDC ==
+async function swapEthToUsdc(amountInETH) {
+  try {
+    logger.info("🔁 ETH → USDC swap:", amountInETH, "ETH");
+    const ethAmount = ethers.parseEther(amountInETH.toString());
+
+    const params = {
+      tokenIn: ETH_ADDRESS,
+      tokenOut: USDC_ADDRESS,
+      fee: POOL_FEE,
+      recipient: WALLET,
+      deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+      amountIn: ethAmount,
+      amountOutMinimum: 0,
+      sqrtPriceLimitX96: 0,
+    };
+
+    const tx = await swapRouter.exactInputSingle(params, {
+      value: ethAmount,
+      gasLimit: 1_000_000
+    });
+
+    logger.info("✅ TX sent:", tx.hash);
+    const receipt = await tx.wait();
+    logger.info("🎉 ETH → USDC Swap complete. Block:", receipt.blockNumber);
+  } catch (err) {
+    logger.error("💥 ETH → USDC Swap failed:", err);
   }
-];
+}
 
-const router = new web3.eth.Contract(routerABI, UNISWAP_ROUTER);
+// == Swap USDC → ETH ==
+async function swapUsdcToEth(amountInUSDC) {
+  try {
+    logger.info("🔁 USDC → ETH swap:", amountInUSDC, "USDC");
+    const usdcAmount = ethers.parseUnits(amountInUSDC.toString(), 6); // USDC has 6 decimals
+
+    // Approve router to spend USDC
+    const usdc = new ethers.Contract(
+      USDC_ADDRESS,
+      ['function approve(address spender, uint256 amount) public returns (bool)'],
+      wallet
+    );
+    const approvalTx = await usdc.approve(SWAP_ROUTER_ADDRESS, usdcAmount);
+    await approvalTx.wait();
+    logger.info("🔐 Approved USDC to router");
+
+    const params = {
+      tokenIn: USDC_ADDRESS,
+      tokenOut: ETH_ADDRESS,
+      fee: POOL_FEE,
+      recipient: WALLET,
+      deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+      amountIn: usdcAmount,
+      amountOutMinimum: 0,
+      sqrtPriceLimitX96: 0,
+    };
+
+    const tx = await swapRouter.exactInputSingle(params, {
+      gasLimit: 1_000_000
+    });
+
+    logger.info("✅ TX sent:", tx.hash);
+    const receipt = await tx.wait();
+    logger.info("🎉 USDC → ETH Swap complete. Block:", receipt.blockNumber);
+  } catch (err) {
+    logger.error("💥 USDC → ETH Swap failed:", err);
+  }
+}
 
 module.exports = {
-  async buy(amountETH) {
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    const amountInWei = web3.utils.toWei(amountETH.toString(), 'ether');
-
-    const tx = await router.methods.swapExactETHForTokens(
-      0,
-      [WETH, USDC],
-      account.address,
-      deadline
-    ).send({
-      from: account.address,
-      value: amountInWei,
-      gas: GAS_LIMIT
-    });
-
-    console.log('✅ BUY TX Success:', tx.transactionHash);
-    return tx.transactionHash;
-  },
-
-  async sell(amountETH) {
-    // In a real implementation, you’d first approve the router to spend USDC
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    const amountInWei = web3.utils.toWei(amountETH.toString(), 'ether');
-
-    const tx = await router.methods.swapExactTokensForETH(
-      amountInWei,
-      0,
-      [USDC, WETH],
-      account.address,
-      deadline
-    ).send({
-      from: account.address,
-      gas: GAS_LIMIT
-    });
-
-    console.log('✅ SELL TX Success:', tx.transactionHash);
-    return tx.transactionHash;
-  }
+  swapEthToUsdc,
+  swapUsdcToEth
 };
