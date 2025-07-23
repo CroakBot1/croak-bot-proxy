@@ -1,3 +1,4 @@
+// index.js
 const express = require('express');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
@@ -16,10 +17,10 @@ app.use(bodyParser.json());
 app.use('/61k', signalRoutes);
 
 app.get('/', (req, res) => {
-  res.send('✅ Croak 24/7 Executor Running...');
+  res.send('✅ Croak 61K Executor Running...');
 });
 
 app.listen(PORT, () => {
   logger.info(`🚀 Server live on port ${PORT}`);
-  startAutoLoop();
+  startAutoLoop(); // ✅ Auto Strategy Loop Starts Here
 });
