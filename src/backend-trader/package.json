@@ -1,13 +1,12 @@
 {
-  "name": "croak-bot",
+  "name": "croak-uniswap-executor",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "backend-trader/index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node backend-trader/index.js"
   },
   "dependencies": {
     "axios": "^1.6.7",
-    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "ethers": "^6.10.0",
