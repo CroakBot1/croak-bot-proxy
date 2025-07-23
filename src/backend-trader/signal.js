@@ -1,40 +1,37 @@
-// == SIGNAL.JS ==
-// Price Signal Detector + Executor Trigger
-
+const express = require('express');
+const router = express.Router();
+const { executeTrade } = require('./executor');
+const { fetchMarketSnapshot } = require('./priceFetcher');
 const logger = require('./logger');
-const { getCurrentPrice } = require('./priceFetcher');
-const { swapEthToUsdc } = require('./executor');
 
-// ✅ Strategy Thresholds
-const BUY_THRESHOLD = 2850;   // Example: Buy ETH below $2850
-const SELL_THRESHOLD = 3550;  // Example: Sell ETH above $3550
+// Signal handler from frontend
+router.post('/signal', async (req, res) => {
+  const { action, amount } = req.body;
 
-// ✅ Trade Amount in ETH
-const TRADE_AMOUNT_ETH = 0.01;
+  logger.info(`📡 Received signal from frontend: ${action} ${amount} ETH`);
 
-// ✅ Signal Check Loop
-async function checkSignalAndExecute() {
-  try {
-    logger.info("⏳ Running 61K strategy check...");
-
-    const ethPrice = await getCurrentPrice();
-    logger.info("📈 ETH Current Price:", ethPrice);
-
-    if (ethPrice < BUY_THRESHOLD) {
-      logger.info("✅ BUY Signal Detected 🟢");
-      await swapEthToUsdc(TRADE_AMOUNT_ETH); // ⚡ Execute trade
-    } else if (ethPrice > SELL_THRESHOLD) {
-      logger.info("⚠️ SELL Signal Detected 🔴");
-      logger.warn("💤 SELL logic not implemented yet...");
-      // TODO: swapUsdcToEth(); if needed
-    } else {
-      logger.info("⏸️ No clear signal. Waiting...");
-    }
-
-  } catch (err) {
-    logger.error("💥 Error during signal check:", err);
+  if (!action || !['BUY', 'SELL'].includes(action.toUpperCase())) {
+    return res.status(400).json({ error: 'Invalid action. Must be BUY or SELL.' });
   }
-}
 
-// ✅ Auto-loop every 30s
-setInterval(checkSignalAndExecute, 30 * 1000);
+  try {
+    // 🔁 Execute Uniswap trade
+    const txResult = await executeTrade(action.toUpperCase(), amount);
+
+    // 📈 Fetch latest market data from Bybit
+    const marketData = await fetchMarketSnapshot();
+
+    // 🧠 Respond to frontend
+    res.json({
+      status: 'success',
+      action,
+      txResult,
+      marketData
+    });
+  } catch (err) {
+    logger.error('❌ Error in /signal:', err);
+    res.status(500).json({ error: 'Signal processing failed', details: err.message });
+  }
+});
+
+module.exports = router;
