@@ -1,33 +1,45 @@
 const express = require('express');
 const router = express.Router();
 const { executeTrade } = require('./executor');
-const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
 
-// ✅ Matches POST /signal
-router.post('/', async (req, res) => {
+// ✅ Receive POST from frontend
+router.post('/signal', async (req, res) => {
   const { action, amount } = req.body;
 
-  logger.info(`📡 Received signal: ${action} ${amount} ETH`);
+  logger.info(`📡 Signal received: ${action} ${amount} ETH`);
 
+  // Validate action
   if (!action || !['BUY', 'SELL'].includes(action.toUpperCase())) {
     return res.status(400).json({ error: 'Invalid action. Must be BUY or SELL.' });
   }
 
-  try {
-    const txResult = await executeTrade(action.toUpperCase(), amount);
-    const price = await fetchPrice();
+  // Validate amount
+  if (!amount || isNaN(amount) || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'Invalid amount. Must be a number > 0.' });
+  }
 
+  try {
+    // 🔁 Execute real Uniswap trade
+    const txResult = await executeTrade(action.toUpperCase(), amount);
+
+    if (!txResult.success) {
+      logger.error('❌ Trade failed:', txResult.error);
+      return res.status(500).json({ status: 'fail', error: txResult.error });
+    }
+
+    // ✅ Respond with transaction hash
     res.json({
       status: 'success',
+      message: `Trade executed`,
+      txHash: txResult.txHash,
       action,
-      amount,
-      txResult,
-      price
+      amount
     });
+
   } catch (err) {
-    logger.error('❌ Error in /signal:', err);
-    res.status(500).json({ error: 'Signal processing failed', details: err.message });
+    logger.error('💥 Error in /signal:', err.message);
+    res.status(500).json({ error: 'Execution failed', details: err.message });
   }
 });
 
