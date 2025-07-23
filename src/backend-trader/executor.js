@@ -22,9 +22,14 @@ async function executeTrade(action, amount) {
 
     const tx = await wallet.sendTransaction(txData);
     logger.info(`📤 Sent tx: ${tx.hash}`);
-    await tx.wait();
 
-    return { success: true, hash: tx.hash };
+    const receipt = await tx.wait();
+    logger.info(`✅ Confirmed tx: ${receipt.transactionHash}`);
+
+    return {
+      success: true,
+      hash: receipt.transactionHash,
+    };
   } catch (err) {
     logger.error('💥 Trade failed:', err.message);
     return { success: false, error: err.message };
