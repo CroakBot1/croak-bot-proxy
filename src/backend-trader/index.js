@@ -1,8 +1,11 @@
 const express = require('express');
-const cors = require('cors');
 const bodyParser = require('body-parser');
-const signalRoutes = require('./signal');
+const dotenv = require('dotenv');
+const cors = require('cors');
 const logger = require('./logger');
+const signalRoutes = require('./signal'); // ✅ make sure this exists
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Mount correctly
+// ✅ Mount route at /signal
 app.use('/signal', signalRoutes);
 
 app.get('/', (req, res) => {
