@@ -13,8 +13,8 @@ function getStoredSignal() {
 function getSignal(price, state = {}) {
   const lastPrice = state.lastPrice || 0;
 
-  if (price > lastPrice * 1.005) return 'buy';
-  if (price < lastPrice * 0.995) return 'sell';
+  if (price < lastPrice * 0.995) return 'buy';   // ⬇️ Buy low
+  if (price > lastPrice * 1.005) return 'sell';  // ⬆️ Sell high
   return 'hold';
 }
 
