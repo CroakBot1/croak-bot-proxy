@@ -1,45 +1,26 @@
 // autoLoop.js
 const { executeTrade } = require('./executor');
-const { getLongShortRatio, getOpenInterest } = require('./priceFetcher');
+const { getLongShortRatio } = require('./priceFetcher');
 const logger = require('./logger');
 
 const INTERVAL = 15000;
 const AMOUNT = 0.001;
 
-async function decideAction() {
-  const ratio = await getLongShortRatio();
-  const oi = await getOpenInterest();
-
-  const longRatio = parseFloat(ratio.longShortRatio || 1);
-  const oiVal = parseFloat(oi.openInterest || 0);
-
-  if (longRatio > 1.15 && oiVal > 100000000) {
-    return 'SELL';
-  } else if (longRatio < 0.9 && oiVal > 100000000) {
-    return 'BUY';
-  } else {
-    return null;
-  }
-}
-
 async function runAutoStrategy() {
   try {
-    const action = await decideAction();
-    if (!action) {
-      logger.heartbeat('No action this cycle.');
-      return;
-    }
+    const ratio = await getLongShortRatio();
+    const action = parseFloat(ratio.longShortRatio) > 1.2 ? 'SELL' : 'BUY';
 
-    logger.info(`🧠 61K AUTO: ${action} ${AMOUNT} ETH`);
+    logger.info(`🧠 Auto Strategy: ${action} ${AMOUNT} ETH`);
     const result = await executeTrade(action, AMOUNT);
-    logger.info(`📤 TX result: ${JSON.stringify(result)}`);
+    logger.info(`📤 Tx result: ${JSON.stringify(result)}`);
   } catch (err) {
-    logger.error('💥 AutoLoop Error:', err.message);
+    logger.error('❌ Auto strategy failed:', err.message);
   }
 }
 
 function startAutoLoop() {
-  logger.info('🔁 Starting 61K Brain Auto Strategy Loop...');
+  logger.info('🔁 Starting Auto Strategy Loop...');
   runAutoStrategy();
   setInterval(runAutoStrategy, INTERVAL);
 }
