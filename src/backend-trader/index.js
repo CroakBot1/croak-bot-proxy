@@ -1,9 +1,10 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
 const cors = require('cors');
 const logger = require('./logger');
-const signalRoutes = require('./signal');
+const signalRoutes = require('./61k');
+const { startAutoLoop } = require('./autoLoop');
 
 dotenv.config();
 
@@ -12,14 +13,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// ✅ MOUNT CORRECTLY AT /signal
-app.use('/signal', signalRoutes);
+app.use('/61k', signalRoutes);
 
 app.get('/', (req, res) => {
-  res.send('🟢 Croak Executor Backend is Alive');
+  res.send('✅ Croak 24/7 Executor Running...');
 });
 
 app.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
+  logger.info(`🚀 Server live on port ${PORT}`);
+  startAutoLoop();
 });
