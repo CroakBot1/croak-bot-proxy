@@ -1,18 +1,16 @@
+// index.js
+require('dotenv').config();
 const express = require('express');
-const { handleExecution } = require('./executor');
+const bodyParser = require('body-parser');
+const { handleSignal } = require('./signal');
+const logger = require('./logger');
+
 const app = express();
+app.use(bodyParser.json());
 
-app.use(express.json());
+app.post('/signal', handleSignal);
 
-app.post('/execute', async (req, res) => {
-  try {
-    const result = await handleExecution(req.body);
-    res.json({ success: true, tx: result });
-  } catch (err) {
-    console.error('❌ Execution error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  logger.info(`🚀 Backend ready on port ${PORT}`);
 });
-
-const PORT = 4000;
-app.listen(PORT, () => console.log(`🚀 Executor live at http://localhost:${PORT}`));
