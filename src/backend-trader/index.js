@@ -1,26 +1,19 @@
-const { executeTrade } = require('./executor');
-const { getLongShortRatio } = require('./priceFetcher');
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
 const logger = require('./logger');
+const { startAutoLoop } = require('./brain');
 
-const AMOUNT = 0.001;
-const INTERVAL = 15000;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-async function runStrategy() {
-  try {
-    const ratio = await getLongShortRatio();
-    const action = parseFloat(ratio.longShortRatio) > 1.2 ? 'SELL' : 'BUY';
-    logger.info(`🧠 Strategy decision: ${action} | Ratio: ${ratio.longShortRatio}`);
-    const result = await executeTrade(action, AMOUNT);
-    logger.info(`✅ Executed ${action}: TX Hash: ${result.hash || 'N/A'}`);
-  } catch (err) {
-    logger.error('❌ Strategy error:', err.message);
-  }
-}
+app.use(cors());
 
-function startAutoLoop() {
-  logger.info('🔁 24/7 auto-trading loop started...');
-  runStrategy();
-  setInterval(runStrategy, INTERVAL);
-}
+app.get('/', (req, res) => {
+  res.send('✅ Croak Uniswap Bot Running 24/7...');
+});
 
-module.exports = { startAutoLoop };
+app.listen(PORT, () => {
+  logger.info(`🌐 Server running on port ${PORT}`);
+  startAutoLoop(); // Start auto strategy
+});
