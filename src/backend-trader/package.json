@@ -1,7 +1,6 @@
 {
   "name": "croak-uniswap-executor",
   "version": "1.0.0",
-  "description": "Croak Coin 24/7 Uniswap trading bot powered by 61K brain",
   "main": "src/backend-trader/index.js",
   "scripts": {
     "start": "node src/backend-trader/index.js"
@@ -15,10 +14,5 @@
     "@uniswap/v3-sdk": "^3.11.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^3.0.0"
-  },
-  "engines": {
-    "node": ">=16"
-  },
-  "author": "Agawon",
-  "license": "MIT"
+  }
 }
