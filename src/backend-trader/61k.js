@@ -1,25 +1,33 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
-const cors = require('cors');
+const router = express.Router();
+const { executeTrade } = require('./executor');
+const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
-const signalRoutes = require('./61k');
-const { startAutoLoop } = require('./autoLoop');
 
-dotenv.config();
+router.post('/', async (req, res) => {
+  const { action, amount } = req.body;
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+  if (!action || !['BUY', 'SELL'].includes(action.toUpperCase())) {
+    return res.status(400).json({ error: 'Invalid action. Use BUY or SELL.' });
+  }
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use('/61k', signalRoutes);
+  logger.info(`📡 Signal: ${action} ${amount} ETH`);
 
-app.get('/', (req, res) => {
-  res.send('✅ Croak 24/7 Executor Running...');
+  try {
+    const price = await fetchPrice();
+    const result = await executeTrade(action.toUpperCase(), amount);
+
+    res.json({
+      status: 'success',
+      action,
+      amount,
+      price,
+      txHash: result.hash || null
+    });
+  } catch (err) {
+    logger.error('❌ Signal error:', err.message);
+    res.status(500).json({ error: 'Signal execution failed.' });
+  }
 });
 
-app.listen(PORT, () => {
-  logger.info(`🚀 Server live on port ${PORT}`);
-  startAutoLoop();
-});
+module.exports = router;
