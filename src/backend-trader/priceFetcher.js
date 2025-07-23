@@ -1,16 +1,14 @@
 const axios = require('axios');
 const logger = require('./logger');
 
-const BASE_URL = 'https://api.bybit.com/v5/market';
-
-async function fetchPrice(symbol = 'ETHUSDT') {
+async function getLongShortRatio(symbol = 'ETHUSDT') {
   try {
-    const res = await axios.get(`${BASE_URL}/tickers?category=linear&symbol=${symbol}`);
-    return parseFloat(res.data.result.list[0].lastPrice);
+    const res = await axios.get(`https://api.bybit.com/v5/market/account-ratio?symbol=${symbol}&period=5m`);
+    return res.data.result.list[0];
   } catch (err) {
-    logger.error('❌ Price fetch error:', err.message);
-    return null;
+    logger.error('📉 Error fetching ratio:', err.message);
+    return { longShortRatio: 1 }; // fallback
   }
 }
 
-module.exports = { fetchPrice };
+module.exports = { getLongShortRatio };
