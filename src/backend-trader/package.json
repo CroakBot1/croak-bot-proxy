@@ -1,33 +1,19 @@
 {
-  "name": "croak-uniswap-executor",
+  "name": "croak-bot",
   "version": "1.0.0",
-  "description": "24/7 ETH-USDC Uniswap Auto Executor with Brain Strategy",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "axios": "1.6.7",
-    "cors": "2.8.5",
-    "dotenv": "16.3.1",
-    "ethers": "6.10.0",
-    "express": "4.18.2",
-    "@uniswap/sdk-core": "3.0.3",
-    "@uniswap/v3-sdk": "3.11.1",
-    "@uniswap/v3-core": "1.0.1",
-    "@uniswap/v3-periphery": "3.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "croak",
-    "uniswap",
-    "trading-bot",
-    "executor",
-    "eth",
-    "usdc"
-  ],
-  "author": "Agawon",
-  "license": "MIT"
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ethers": "^6.10.0",
+    "@uniswap/sdk-core": "^3.0.3",
+    "@uniswap/v3-sdk": "^3.11.1",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^3.0.0"
+  }
 }
