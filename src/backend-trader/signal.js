@@ -4,30 +4,30 @@ const { executeTrade } = require('./executor');
 const { fetchPrice } = require('./priceFetcher');
 const logger = require('./logger');
 
-// ✅ Handle POST /signal
+// ✅ Matches POST /signal
 router.post('/', async (req, res) => {
   const { action, amount } = req.body;
 
-  logger.info(`📡 Signal received: ${action} ${amount} ETH`);
+  logger.info(`📡 Received signal: ${action} ${amount} ETH`);
 
   if (!action || !['BUY', 'SELL'].includes(action.toUpperCase())) {
     return res.status(400).json({ error: 'Invalid action. Must be BUY or SELL.' });
   }
 
   try {
-    const result = await executeTrade(action.toUpperCase(), amount);
+    const txResult = await executeTrade(action.toUpperCase(), amount);
     const price = await fetchPrice();
 
     res.json({
       status: 'success',
       action,
       amount,
-      result,
+      txResult,
       price
     });
   } catch (err) {
-    logger.error('❌ Signal handler error:', err);
-    res.status(500).json({ error: 'Execution failed', details: err.message });
+    logger.error('❌ Error in /signal:', err);
+    res.status(500).json({ error: 'Signal processing failed', details: err.message });
   }
 });
 
