@@ -1,28 +1,46 @@
 // signal.js
-const executor = require('./executor');
 
-module.exports = async function handleSignal(req, res) {
-  const { action, amount } = req.body;
+const { fetchPrice, getFundingRate, getLongShortRatio, getOpenInterest, getVolumeStats } = require('./priceFetcher');
+const logger = require('./logger');
 
-  if (!action || !amount) {
-    return res.status(400).json({ error: 'Missing action or amount' });
-  }
+// Validate signal before executing trade
+async function validateSignal({ action, symbol = 'ETHUSDT', amount }) {
+  logger.info(`🚦 Signal received: ${action} ${symbol} for amount ${amount}`);
 
   try {
-    console.log(`📩 Signal received: ${action} ${amount} ETH`);
+    const currentPrice = await fetchPrice(symbol);
+    const funding = await getFundingRate(symbol);
+    const longShort = await getLongShortRatio(symbol);
+    const openInterest = await getOpenInterest(symbol);
+    const volumeStats = await getVolumeStats(symbol);
 
-    let result;
-    if (action === 'BUY') {
-      result = await executor.buy(amount);
-    } else if (action === 'SELL') {
-      result = await executor.sell(amount);
-    } else {
-      return res.status(400).json({ error: 'Invalid action' });
-    }
+    // Example decision logic (adjustable)
+    const isBullish = funding.fundingRate > 0 && longShort.longShortRatio < 1.5;
+    const isBearish = funding.fundingRate < 0 && longShort.longShortRatio > 1.5;
 
-    res.status(200).json({ success: true, tx: result });
+    let allowTrade = false;
+    if (action === 'BUY' && isBullish) allowTrade = true;
+    if (action === 'SELL' && isBearish) allowTrade = true;
+
+    logger.info(`📈 Price: $${currentPrice} | 📊 Funding: ${funding.fundingRate} | 🧠 Long/Short: ${longShort.longShortRatio}`);
+
+    return {
+      success: allowTrade,
+      reason: allowTrade ? "Signal validated." : "Market conditions not favorable.",
+      data: {
+        price: currentPrice,
+        fundingRate: funding.fundingRate,
+        longShortRatio: longShort.longShortRatio,
+        openInterest,
+        volumeStats,
+      }
+    };
   } catch (err) {
-    console.error('❌ Execution error:', err);
-    res.status(500).json({ error: 'Execution failed', details: err.message });
+    logger.error('⚠️ Error during signal validation:', err);
+    return { success: false, reason: 'Signal validation error.' };
   }
+}
+
+module.exports = {
+  validateSignal
 };
