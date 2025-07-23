@@ -1,8 +1,9 @@
 const { ethers } = require('ethers');
 
+// ✅ Uniswap V3 BASE MAINNET addresses
 const USDC_ADDRESS = '0xd9AA094C8b3B869D95fC2eE6dA1dA4BCCeAaB7D0';
 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const SWAP_ROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
+const SWAP_ROUTER_ADDRESS = '0x327Df1E6de05895d2ab08513aaDD9313Fe505d86'; // ✅ Uniswap V3 Router on BASE
 const SLIPPAGE_TOLERANCE = 0.01;
 
 function getDeadline() {
@@ -23,7 +24,7 @@ const swapRouterAbi = [
 
 async function getSwapTx({ wallet, amountIn, tokenIn, tokenOut }) {
   const router = new ethers.Contract(SWAP_ROUTER_ADDRESS, swapRouterAbi, wallet);
-  const fee = 500;
+  const fee = 500; // 0.05%
   const rawAmountIn = toRaw(amountIn, 18);
   const amountOutMinimum = 0;
   const deadline = getDeadline();
