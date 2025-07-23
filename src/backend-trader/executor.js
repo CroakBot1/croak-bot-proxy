@@ -1,42 +1,46 @@
-// executor.js
 require('dotenv').config();
 const { ethers } = require('ethers');
 const logger = require('./logger');
+const { getSwapTx, WETH_ADDRESS, USDC_ADDRESS } = require('./uniswapHelpers');
 
-// Load environment variables
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const WALLET = process.env.WALLET;
-
-if (!PRIVATE_KEY || !WALLET) {
-  logger.error('❌ PRIVATE_KEY or WALLET not set in .env file');
-  process.exit(1);
-}
-
-// Setup provider (you can modify this to fit your RPC)
-const provider = new ethers.JsonRpcProvider('https://mainnet.infura.io/v3/YOUR_INFURA_KEY');
+const provider = new ethers.JsonRpcProvider('https://mainnet.base.org'); // ✅ BASE MAINNET
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// Fake execution function — replace this with real Uniswap execution
-async function executeTrade(action, amount) {
+async function executeTrade(action, amountInEth) {
   try {
-    logger.info(`🚀 Executing ${action.toUpperCase()} with amount: ${amount}`);
+    logger.info(`🚀 Executing ${action} for ${amountInEth} ETH on BASE`);
 
-    // Sample output simulation
-    if (action === 'buy') {
-      logger.success(`✅ Buy executed: ${amount} ETH`);
-    } else if (action === 'sell') {
-      logger.success(`✅ Sell executed: ${amount} ETH`);
-    } else {
-      logger.warn(`⚠️ Unknown action: ${action}`);
-    }
+    const isBuy = action.toUpperCase() === 'BUY';
+    const tokenIn = isBuy ? WETH_ADDRESS : USDC_ADDRESS;
+    const tokenOut = isBuy ? USDC_ADDRESS : WETH_ADDRESS;
 
-    return { success: true, action, amount };
+    const txRequest = await getSwapTx({
+      wallet,
+      amountIn: amountInEth,
+      tokenIn,
+      tokenOut
+    });
+
+    logger.info('🧠 Built TX:', txRequest);
+
+    const txResponse = await wallet.sendTransaction(txRequest);
+    logger.info('📤 TX sent! Hash:', txResponse.hash);
+
+    const receipt = await txResponse.wait();
+    logger.info('✅ TX confirmed:', receipt.transactionHash);
+
+    return {
+      success: true,
+      hash: receipt.transactionHash,
+      action,
+      amount: amountInEth
+    };
+
   } catch (err) {
-    logger.error('💥 Error during execution:', err);
+    logger.error('💥 Trade failed:', err.message);
     return { success: false, error: err.message };
   }
 }
 
-module.exports = {
-  executeTrade,
-};
+module.exports = { executeTrade };
