@@ -4,41 +4,47 @@ const logger = require('./logger');
 const { getSwapTx, WETH_ADDRESS, USDC_ADDRESS } = require('./uniswapHelpers');
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const provider = new ethers.JsonRpcProvider('https://mainnet.base.org'); // ✅ BASE MAINNET
+const WALLET = process.env.WALLET;
+const INFURA_API = process.env.INFURA_API;
+
+if (!PRIVATE_KEY || !WALLET || !INFURA_API) {
+  logger.error('❌ Missing env vars (PRIVATE_KEY, WALLET, INFURA_API)');
+  process.exit(1);
+}
+
+// ✅ Choose your RPC: Ethereum Mainnet or Base Mainnet
+const provider = new ethers.JsonRpcProvider(`https://mainnet.infura.io/v3/${INFURA_API}`); // ← you can switch to Base RPC
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-async function executeTrade(action, amountInEth) {
+async function executeTrade(action, amount) {
   try {
-    logger.info(`🚀 Executing ${action} for ${amountInEth} ETH on BASE`);
+    const tokenIn = action === 'BUY' ? USDC_ADDRESS : WETH_ADDRESS;
+    const tokenOut = action === 'BUY' ? WETH_ADDRESS : USDC_ADDRESS;
+    const amountIn = amount;
 
-    const isBuy = action.toUpperCase() === 'BUY';
-    const tokenIn = isBuy ? WETH_ADDRESS : USDC_ADDRESS;
-    const tokenOut = isBuy ? USDC_ADDRESS : WETH_ADDRESS;
+    logger.info(`🚀 Preparing real ${action} trade for ${amountIn} ${tokenIn === USDC_ADDRESS ? 'USDC' : 'ETH'}`);
 
-    const txRequest = await getSwapTx({
+    const txData = await getSwapTx({
       wallet,
-      amountIn: amountInEth,
+      amountIn,
       tokenIn,
-      tokenOut
+      tokenOut,
     });
 
-    logger.info('🧠 Built TX:', txRequest);
+    logger.info(`📦 Sending transaction...`);
+    const tx = await wallet.sendTransaction(txData);
+    const receipt = await tx.wait();
 
-    const txResponse = await wallet.sendTransaction(txRequest);
-    logger.info('📤 TX sent! Hash:', txResponse.hash);
-
-    const receipt = await txResponse.wait();
-    logger.info('✅ TX confirmed:', receipt.transactionHash);
+    logger.info(`✅ Transaction confirmed: ${receipt.transactionHash}`);
 
     return {
       success: true,
-      hash: receipt.transactionHash,
+      txHash: receipt.transactionHash,
       action,
-      amount: amountInEth
+      amount,
     };
-
   } catch (err) {
-    logger.error('💥 Trade failed:', err.message);
+    logger.error('💥 Trade execution failed:', err.message);
     return { success: false, error: err.message };
   }
 }
