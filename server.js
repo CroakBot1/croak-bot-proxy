@@ -1,27 +1,34 @@
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Optional: Load environment variables if needed
+// server.js
 require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const logger = require('./src/backend-trader/logger');
+const { startAutoLoop } = require('./src/backend-trader/brain');
 
-// Simple health check endpoint for Render Cronjob or uptime monitor
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.use(cors());
+
+// ✅ Health check (Render cronjob ping)
 app.get('/', (req, res) => {
   res.send('✅ Croak Bot Cronjob ping received at ' + new Date().toISOString());
 });
 
-// Optional: Trigger backend logic here if needed
+// ✅ Optional manual trigger (for testing only)
 app.get('/trigger', async (req, res) => {
   try {
-    const { runStrategy } = require('./src/backend-trader/index');
-    await runStrategy(); // make sure you export a function in index.js
+    const { runStrategy } = require('./src/backend-trader/index'); // You must export this manually
+    await runStrategy();
     res.send('✅ Strategy executed at ' + new Date().toISOString());
   } catch (err) {
-    console.error('❌ Error running strategy:', err);
+    logger.error('❌ Error running /trigger:', err.message);
     res.status(500).send('Error executing strategy.');
   }
 });
 
+// ✅ Start server and 24/7 loop
 app.listen(PORT, () => {
-  console.log(`🚀 Cronjob Server running on port ${PORT}`);
+  logger.info(`🚀 Cronjob Server running on port ${PORT}`);
+  startAutoLoop(); // 💡 This enables 24/7 auto-strategy loop
 });
