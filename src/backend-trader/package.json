@@ -1,19 +1,12 @@
 {
-  "name": "croak-uniswap-61k",
+  "name": "bybit-data-fetcher",
   "version": "1.0.0",
-  "description": "Croak 24/7 Executor with 61k Brain",
-  "main": "src/backend-trader/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/backend-trader/index.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.7",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "ethers": "^6.10.0",
-    "@uniswap/sdk-core": "^3.0.3",
-    "@uniswap/v3-sdk": "^3.11.1",
-    "@uniswap/v3-core": "^1.0.1",
-    "@uniswap/v3-periphery": "^3.0.0"
+    "axios": "^1.6.0"
   }
 }
