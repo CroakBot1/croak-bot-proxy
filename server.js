@@ -1,3 +1,4 @@
+// 🔒 LOCKED: 61K Quantum Brain Backend Proxy
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -50,7 +51,7 @@ app.get("/kline", async (req, res) => {
         category: "linear",
         symbol: "ETHUSDT",
         interval: "1",
-        limit: 100 // ✅ RSI FIX
+        limit: 100
       }
     });
     res.json(response.data);
@@ -89,6 +90,36 @@ app.get("/trades", async (req, res) => {
   } catch (err) {
     console.error("🔥 TRADES ERROR:", err.message);
     res.status(500).json({ error: "Failed to fetch trades" });
+  }
+});
+
+// ✅ INDICATORS (Layer 4+)
+app.get("/indicators", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/indicator", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT",
+        interval: "1"
+      }
+    });
+
+    const indicators = response.data.result;
+    res.json({
+      ma: indicators.ma,
+      ema: indicators.ema,
+      boll: indicators.boll,
+      sar: indicators.sar,
+      mavol: indicators.mavolume,
+      macd: indicators.macd,
+      kdj: indicators.kdj,
+      we: indicators.wr,
+      stockRSI: indicators.stochrsi
+    });
+
+  } catch (err) {
+    console.error("🔥 INDICATOR ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch indicators" });
   }
 });
 
