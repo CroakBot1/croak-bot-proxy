@@ -1,29 +1,20 @@
 {
   "name": "croak-bot-proxy",
   "version": "1.0.0",
-  "description": "Backend fetcher for Bybit V5 - Kline, Ticker, Trades, Orderbook, Mark Price",
+  "description": "Real-time Bybit V5 Data Fetcher for 61K Brain",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [
-    "bybit",
-    "v5",
-    "fetcher",
-    "proxy",
-    "croak",
-    "bot",
-    "kline",
-    "ticker",
-    "orderbook",
-    "trades",
-    "markPrice"
-  ],
-  "author": "Agawon",
-  "license": "MIT",
   "dependencies": {
     "axios": "^1.6.8",
-    "express": "^4.19.2",
-    "cors": "^2.8.5"
-  }
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["bybit", "api", "bot", "fetcher", "croak", "61k"],
+  "author": "Agawon",
+  "license": "MIT"
 }
