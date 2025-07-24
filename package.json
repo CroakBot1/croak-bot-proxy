@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "ping": "curl -s http://localhost:3000/ping"
+    "ping": "curl -s http://localhost:10000/ping"
   },
   "dependencies": {
     "axios": "^1.6.8",
@@ -18,8 +18,10 @@
     "61k",
     "proxy",
     "bybit",
-    "RSI",
-    "quantum-brain"
+    "rsi",
+    "quantum-brain",
+    "realtime",
+    "crypto"
   ],
   "author": "Agawon",
   "license": "MIT"
