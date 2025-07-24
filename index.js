@@ -30,7 +30,7 @@ app.get("/ticker", async (req, res) => {
   }
 });
 
-// ✅ KLINE
+// ✅ KLINE (⚡ Patched: now returns 100 candles for RSI and future indicators)
 app.get("/kline", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/kline", {
@@ -38,7 +38,7 @@ app.get("/kline", async (req, res) => {
         category: "linear",
         symbol: "ETHUSDT",
         interval: "1",
-        limit: 1
+        limit: 100 // ⚠️ PATCHED: from 1 → 100 (RSI FIX)
       }
     });
     res.json(response.data);
