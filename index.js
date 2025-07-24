@@ -1,47 +1,94 @@
-// backend/index.js
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const SYMBOL = "ETHUSDT";
-const CATEGORY = "linear";
-const INTERVAL = 1; // 1m TF
+app.use(cors());
 
-// All Bybit V5 endpoints to fetch
-const endpoints = {
-  kline: `https://api.bybit.com/v5/market/kline?category=${CATEGORY}&symbol=${SYMBOL}&interval=${INTERVAL}&limit=100`,
-  ticker: `https://api.bybit.com/v5/market/tickers?category=${CATEGORY}&symbol=${SYMBOL}`,
-  trades: `https://api.bybit.com/v5/market/recent-trade?category=${CATEGORY}&symbol=${SYMBOL}`,
-  orderbook: `https://api.bybit.com/v5/market/orderbook?category=${CATEGORY}&symbol=${SYMBOL}`,
-  markPrice: `https://api.bybit.com/v5/market/mark-price?symbol=${SYMBOL}`
-};
-
-app.get("/", async (req, res) => {
+// 🟢 KLINE: Candles (1m, 5m, etc.)
+app.get("/kline", async (req, res) => {
   try {
-    const [klineRes, tickerRes, tradesRes, orderbookRes, markRes] = await Promise.all([
-      axios.get(endpoints.kline),
-      axios.get(endpoints.ticker),
-      axios.get(endpoints.trades),
-      axios.get(endpoints.orderbook),
-      axios.get(endpoints.markPrice)
-    ]);
-
-    const data = {
-      candles: klineRes.data.result.list || [],
-      ticker: tickerRes.data.result.list?.[0] || {},
-      trades: tradesRes.data.result.list || [],
-      orderbook: orderbookRes.data.result || {},
-      markPrice: markRes.data.result || {}
-    };
-
-    res.json(data);
+    const response = await axios.get("https://api.bybit.com/v5/market/kline", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT",
+        interval: "1",
+        limit: 200
+      }
+    });
+    res.json(response.data);
   } catch (err) {
-    console.error("Fetch error:", err.message);
-    res.status(500).json({ error: "Failed to fetch from Bybit V5 API" });
+    console.error("🔥 KLINE ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch KLINE" });
+  }
+});
+
+// 🟢 TICKER: Price snapshot and volume
+app.get("/ticker", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/tickers", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 TICKER ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch TICKER" });
+  }
+});
+
+// 🟢 MARK PRICE
+app.get("/markprice", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/mark-price", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 MARK PRICE ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch MARK PRICE" });
+  }
+});
+
+// 🟢 ORDERBOOK
+app.get("/orderbook", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/orderbook", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 ORDERBOOK ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch ORDERBOOK" });
+  }
+});
+
+// 🟢 TRADES
+app.get("/trades", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/recent-trade", {
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 TRADES ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch TRADES" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend fetcher live on port ${PORT}`);
+  console.log(`✅ CROAK BACKEND LIVE on PORT ${PORT}`);
 });
