@@ -93,28 +93,40 @@ app.get("/trades", async (req, res) => {
   }
 });
 
-// ✅ INDICATORS (Layer 4+)
+// ✅ INDICATORS (Manual MA/EMA; others = placeholders)
 app.get("/indicators", async (req, res) => {
   try {
-    const response = await axios.get("https://api.bybit.com/v5/market/indicator", {
+    const klineRes = await axios.get("https://api.bybit.com/v5/market/kline", {
       params: {
         category: "linear",
         symbol: "ETHUSDT",
-        interval: "1"
+        interval: "1",
+        limit: 100
       }
     });
 
-    const indicators = response.data.result;
+    const candles = klineRes.data.result.list;
+    const closes = candles.map(c => parseFloat(c[4])).reverse();
+
+    const ma = (closes.reduce((a, b) => a + b, 0) / closes.length).toFixed(2);
+    let ema = closes[0];
+    const smoothing = 2;
+    const period = 14;
+    const multiplier = smoothing / (period + 1);
+    for (let i = 1; i < closes.length; i++) {
+      ema = ((closes[i] - ema) * multiplier) + ema;
+    }
+
     res.json({
-      ma: indicators.ma,
-      ema: indicators.ema,
-      boll: indicators.boll,
-      sar: indicators.sar,
-      mavol: indicators.mavolume,
-      macd: indicators.macd,
-      kdj: indicators.kdj,
-      wr: indicators.wr,
-      stockRSI: indicators.stochrsi
+      ma,
+      ema: ema.toFixed(2),
+      boll: "🔒 coming soon",
+      sar: "🔒 coming soon",
+      mavol: "🔒 coming soon",
+      macd: "🔒 coming soon",
+      kdj: "🔒 coming soon",
+      wr: "🔒 coming soon",
+      stockRSI: "🔒 coming soon"
     });
 
   } catch (err) {
