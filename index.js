@@ -3,11 +3,11 @@ const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 
-// 🟢 KLINE: Candles (1m, 5m, etc.)
+// 🟢 KLINE: Candlesticks
 app.get("/kline", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/kline", {
@@ -25,7 +25,7 @@ app.get("/kline", async (req, res) => {
   }
 });
 
-// 🟢 TICKER: Price snapshot and volume
+// 🟢 TICKER: Price and volume snapshot
 app.get("/ticker", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/tickers", {
@@ -41,7 +41,7 @@ app.get("/ticker", async (req, res) => {
   }
 });
 
-// 🟢 MARK PRICE
+// ✅ FIXED: MARK PRICE (real-time)
 app.get("/markprice", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/mark-price", {
@@ -57,7 +57,7 @@ app.get("/markprice", async (req, res) => {
   }
 });
 
-// 🟢 ORDERBOOK
+// 🟢 ORDERBOOK: Live bid/ask
 app.get("/orderbook", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/orderbook", {
@@ -73,7 +73,7 @@ app.get("/orderbook", async (req, res) => {
   }
 });
 
-// 🟢 TRADES
+// 🟢 TRADES: Recent trades
 app.get("/trades", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/recent-trade", {
@@ -89,6 +89,12 @@ app.get("/trades", async (req, res) => {
   }
 });
 
+// ✅ ROOT TEST ENDPOINT
+app.get("/", (req, res) => {
+  res.send("✅ CROAK BACKEND ONLINE — Bybit V5 API Proxy");
+});
+
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ CROAK BACKEND LIVE on PORT ${PORT}`);
 });
