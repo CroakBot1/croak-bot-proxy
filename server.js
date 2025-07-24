@@ -1,15 +1,14 @@
-// server.js
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ CRON PING ENDPOINT
+// ✅ CRON PING
 app.get('/ping', (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received from cron job`);
@@ -18,14 +17,17 @@ app.get('/ping', (req, res) => {
 
 // ✅ HOMEPAGE
 app.get('/', (req, res) => {
-  res.send('🧠 61K Bot Server is running. Use /ping for cron jobs.');
+  res.send('🧠 61K Quantum Brain Proxy is running. Use /ping to keep alive.');
 });
 
-// ✅ TICKER
+// ✅ TICKER (includes markPrice)
 app.get("/ticker", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/tickers", {
-      params: { category: "linear", symbol: "ETHUSDT" }
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
     });
     const t = response.data.result.list[0];
     res.json({
@@ -40,11 +42,16 @@ app.get("/ticker", async (req, res) => {
   }
 });
 
-// ✅ KLINE
+// ✅ KLINE (💡 RSI-ready with 100 candles)
 app.get("/kline", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/kline", {
-      params: { category: "linear", symbol: "ETHUSDT", interval: "1", limit: 1 }
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT",
+        interval: "1",
+        limit: 100 // ✅ RSI FIX
+      }
     });
     res.json(response.data);
   } catch (err) {
@@ -57,7 +64,10 @@ app.get("/kline", async (req, res) => {
 app.get("/orderbook", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/orderbook", {
-      params: { category: "linear", symbol: "ETHUSDT" }
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
     });
     res.json(response.data);
   } catch (err) {
@@ -70,7 +80,10 @@ app.get("/orderbook", async (req, res) => {
 app.get("/trades", async (req, res) => {
   try {
     const response = await axios.get("https://api.bybit.com/v5/market/recent-trade", {
-      params: { category: "linear", symbol: "ETHUSDT" }
+      params: {
+        category: "linear",
+        symbol: "ETHUSDT"
+      }
     });
     res.json(response.data);
   } catch (err) {
