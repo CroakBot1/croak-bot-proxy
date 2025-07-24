@@ -1,7 +1,7 @@
 {
   "name": "croak-bot-proxy",
   "version": "1.0.0",
-  "description": "Backend proxy for 61K Quantum Brain to fetch real-time Bybit V5 data (RSI-ready)",
+  "description": "Backend proxy for 61K Quantum Brain to fetch real-time Bybit V5 data (RSI + indicators ready)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -21,7 +21,8 @@
     "rsi",
     "quantum-brain",
     "realtime",
-    "crypto"
+    "crypto",
+    "indicators"
   ],
   "author": "Agawon",
   "license": "MIT"
