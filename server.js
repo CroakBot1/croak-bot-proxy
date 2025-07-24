@@ -113,7 +113,7 @@ app.get("/indicators", async (req, res) => {
       mavol: indicators.mavolume,
       macd: indicators.macd,
       kdj: indicators.kdj,
-      we: indicators.wr,
+      wr: indicators.wr,
       stockRSI: indicators.stochrsi
     });
 
