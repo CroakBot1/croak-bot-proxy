@@ -1,4 +1,4 @@
-// 🔒 LOCKED: 61K Quantum Brain Backend Proxy
+// 🔓 UNLOCKED: 61K Quantum Brain Backend Proxy (with clean structure)
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -93,7 +93,7 @@ app.get("/trades", async (req, res) => {
   }
 });
 
-// ✅ INDICATORS (Manual MA/EMA; others = placeholders)
+// ✅ INDICATORS (Manual MA/EMA; Structure-ready for others)
 app.get("/indicators", async (req, res) => {
   try {
     const klineRes = await axios.get("https://api.bybit.com/v5/market/kline", {
@@ -108,7 +108,10 @@ app.get("/indicators", async (req, res) => {
     const candles = klineRes.data.result.list;
     const closes = candles.map(c => parseFloat(c[4])).reverse();
 
+    // MA
     const ma = (closes.reduce((a, b) => a + b, 0) / closes.length).toFixed(2);
+
+    // EMA
     let ema = closes[0];
     const smoothing = 2;
     const period = 14;
@@ -120,18 +123,18 @@ app.get("/indicators", async (req, res) => {
     res.json({
       ma,
       ema: ema.toFixed(2),
-      boll: "🔒 coming soon",
-      sar: "🔒 coming soon",
-      mavol: "🔒 coming soon",
-      macd: "🔒 coming soon",
-      kdj: "🔒 coming soon",
-      wr: "🔒 coming soon",
-      stockRSI: "🔒 coming soon"
+      boll: null,       // structure ready
+      sar: null,
+      mavol: null,
+      macd: null,
+      kdj: null,
+      wr: null,
+      stockRSI: null
     });
 
   } catch (err) {
     console.error("🔥 INDICATOR ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch indicators" });
+    res.status(500).json({ error: "Failed to compute indicators" });
   }
 });
 
