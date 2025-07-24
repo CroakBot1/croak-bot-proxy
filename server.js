@@ -1,25 +1,38 @@
 // server.js
-
 const express = require('express');
+const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Optional: If you want to run logic when pinged
-app.get('/ping', (req, res) => {
-  console.log(`[${new Date().toISOString()}] 🔁 Ping received from cron job.`);
-  
-  // Optional: run 61K logic or other function here
-  // runBotLogic();
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-  res.send('✅ Ping received!');
+// Optional: Load your proxy routes (e.g. from index.js)
+try {
+  const loadProxyRoutes = require('./index'); // optional
+  loadProxyRoutes(app);
+} catch (err) {
+  console.log('⚠️ No proxy routes loaded');
+}
+
+// CRON PING ROUTE
+app.get('/ping', (req, res) => {
+  const now = new Date().toISOString();
+  console.log(`[${now}] 🔁 Ping received from cron job`);
+  
+  // Optional: Insert bot logic trigger here
+  // run61KBot();
+
+  res.send('✅ Ping OK: ' + now);
 });
 
-// Root endpoint (optional)
+// Homepage (optional)
 app.get('/', (req, res) => {
-  res.send('🚀 Server is up and running.');
+  res.send('🧠 61K Bot Server is running. Use /ping for cron jobs.');
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🌐 Server running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
