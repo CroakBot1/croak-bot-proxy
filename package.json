@@ -2,9 +2,9 @@
   "name": "croak-bot-proxy",
   "version": "1.0.0",
   "description": "Backend proxy for 61K Quantum Brain to fetch real-time Bybit V5 data",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
