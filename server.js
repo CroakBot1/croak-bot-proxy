@@ -1,38 +1,85 @@
 // server.js
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const axios = require("axios");
+const cors = require("cors");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Optional: Load your proxy routes (e.g. from index.js)
-try {
-  const loadProxyRoutes = require('./index'); // optional
-  loadProxyRoutes(app);
-} catch (err) {
-  console.log('⚠️ No proxy routes loaded');
-}
-
-// CRON PING ROUTE
+// ✅ CRON PING ENDPOINT
 app.get('/ping', (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received from cron job`);
-  
-  // Optional: Insert bot logic trigger here
-  // run61KBot();
-
   res.send('✅ Ping OK: ' + now);
 });
 
-// Homepage (optional)
+// ✅ HOMEPAGE
 app.get('/', (req, res) => {
   res.send('🧠 61K Bot Server is running. Use /ping for cron jobs.');
 });
 
-// Start server
+// ✅ TICKER
+app.get("/ticker", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/tickers", {
+      params: { category: "linear", symbol: "ETHUSDT" }
+    });
+    const t = response.data.result.list[0];
+    res.json({
+      price: t.lastPrice,
+      price24h: t.prevPrice24h,
+      percent24h: t.price24hPcnt,
+      markPrice: t.markPrice
+    });
+  } catch (err) {
+    console.error("🔥 TICKER ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch ticker" });
+  }
+});
+
+// ✅ KLINE
+app.get("/kline", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/kline", {
+      params: { category: "linear", symbol: "ETHUSDT", interval: "1", limit: 1 }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 KLINE ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch kline" });
+  }
+});
+
+// ✅ ORDERBOOK
+app.get("/orderbook", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/orderbook", {
+      params: { category: "linear", symbol: "ETHUSDT" }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 ORDERBOOK ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch orderbook" });
+  }
+});
+
+// ✅ TRADES
+app.get("/trades", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.bybit.com/v5/market/recent-trade", {
+      params: { category: "linear", symbol: "ETHUSDT" }
+    });
+    res.json(response.data);
+  } catch (err) {
+    console.error("🔥 TRADES ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch trades" });
+  }
+});
+
+// ✅ START SERVER
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
