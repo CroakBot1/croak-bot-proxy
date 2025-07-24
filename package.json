@@ -1,12 +1,28 @@
 {
   "name": "croak-bot-proxy",
   "version": "1.0.0",
+  "description": "Backend fetcher for Bybit V5 - Kline, Ticker, Trades, Orderbook, Mark Price",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
+  "keywords": [
+    "bybit",
+    "v5",
+    "fetcher",
+    "proxy",
+    "croak",
+    "bot",
+    "kline",
+    "ticker",
+    "orderbook",
+    "trades",
+    "markPrice"
+  ],
+  "author": "Agawon",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.7",
+    "axios": "^1.6.8",
     "express": "^4.19.2",
     "cors": "^2.8.5"
   }
