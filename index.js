@@ -1,85 +1,68 @@
+// index.js – Croak Bot Proxy + WebSocket Feed
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const http = require("http");
+const WebSocket = require("ws");
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
 const PORT = process.env.PORT || 10000;
 
+// Middleware
 app.use(cors());
 
-// ✅ TICKER (includes markPrice)
-app.get("/ticker", async (req, res) => {
-  try {
-    const response = await axios.get("https://api.bybit.com/v5/market/tickers", {
-      params: {
-        category: "linear",
-        symbol: "ETHUSDT"
-      }
-    });
-
-    const t = response.data.result.list[0];
-    res.json({
-      price: t.lastPrice,
-      price24h: t.prevPrice24h,
-      percent24h: t.price24hPcnt,
-      markPrice: t.markPrice
-    });
-  } catch (err) {
-    console.error("🔥 TICKER ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch ticker" });
-  }
+// Ping endpoint
+app.get("/ping", (req, res) => {
+  res.send("🐸 Croak Bot Proxy is alive!");
 });
 
-// ✅ KLINE (⚡ Patched: now returns 100 candles for RSI and future indicators)
-app.get("/kline", async (req, res) => {
-  try {
-    const response = await axios.get("https://api.bybit.com/v5/market/kline", {
-      params: {
-        category: "linear",
-        symbol: "ETHUSDT",
-        interval: "1",
-        limit: 100 // ⚠️ PATCHED: from 1 → 100 (RSI FIX)
+// WebSocket handler
+wss.on("connection", (client) => {
+  console.log("🟢 New WebSocket client connected");
+
+  // Connect to Bybit V5 WebSocket
+  const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
+
+  bybitWS.on("open", () => {
+    console.log("📡 Connected to Bybit V5 WebSocket");
+
+    // Subscribe to 1-minute kline for ETHUSDT
+    const subMsg = {
+      op: "subscribe",
+      args: ["kline.1.ETHUSDT"]
+    };
+    bybitWS.send(JSON.stringify(subMsg));
+  });
+
+  bybitWS.on("message", (data) => {
+    try {
+      const json = JSON.parse(data);
+      if (json.topic && json.topic.startsWith("kline.1")) {
+        client.send(JSON.stringify(json));
       }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error("🔥 KLINE ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch kline" });
-  }
+    } catch (err) {
+      console.error("❌ Error parsing message:", err.message);
+    }
+  });
+
+  bybitWS.on("close", () => {
+    console.log("🔌 Bybit WS closed");
+  });
+
+  bybitWS.on("error", (err) => {
+    console.error("🚨 Bybit WS Error:", err.message);
+  });
+
+  client.on("close", () => {
+    console.log("🔴 WebSocket client disconnected");
+    bybitWS.close();
+  });
 });
 
-// ✅ ORDERBOOK
-app.get("/orderbook", async (req, res) => {
-  try {
-    const response = await axios.get("https://api.bybit.com/v5/market/orderbook", {
-      params: {
-        category: "linear",
-        symbol: "ETHUSDT"
-      }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error("🔥 ORDERBOOK ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch orderbook" });
-  }
-});
-
-// ✅ TRADES
-app.get("/trades", async (req, res) => {
-  try {
-    const response = await axios.get("https://api.bybit.com/v5/market/recent-trade", {
-      params: {
-        category: "linear",
-        symbol: "ETHUSDT"
-      }
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error("🔥 TRADES ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch trades" });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`✅ CROAK BACKEND LIVE on PORT ${PORT}`);
+// Start server
+server.listen(PORT, () => {
+  console.log(`🚀 Croak Bot Backend running on port ${PORT}`);
 });
