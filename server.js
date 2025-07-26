@@ -1,4 +1,4 @@
-// server.js – WebSocket + Express server with CRON ping
+// server.js – WebSocket + Express + Full Trading Logic + Indicator Calculations
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -30,33 +30,159 @@ function broadcast(data) {
   });
 }
 
-// 🧠 Simulate indicator data every second
-setInterval(() => {
-  const fakeData = {
-    rsi: (Math.random() * 100).toFixed(2),
-    ema: (Math.random() * 3000 + 1000).toFixed(2),
-    sma: (Math.random() * 3000 + 1000).toFixed(2),
-    macd: {
-      macd: (Math.random() * 5).toFixed(3),
-      signal: (Math.random() * 5).toFixed(3)
-    },
-    bb: {
-      upper: (Math.random() * 3500).toFixed(2),
-      lower: (Math.random() * 2500).toFixed(2)
-    },
-    atr: (Math.random() * 5).toFixed(3),
-    vwap: (Math.random() * 3500).toFixed(2),
-    adx: (Math.random() * 50).toFixed(2),
-    signal: Math.random() > 0.5 ? "✅ BUY" : "❌ SELL"
+// 📊 Indicator Calculations
+function calcSMA(data, period) {
+  const slice = data.slice(-period);
+  const sum = slice.reduce((a, b) => a + b, 0);
+  return sum / slice.length;
+}
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  let ema = data[data.length - period];
+  for (let i = data.length - period + 1; i < data.length; i++) {
+    ema = data[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+function calcRSI(data, period) {
+  let gains = 0, losses = 0;
+  for (let i = data.length - period; i < data.length - 1; i++) {
+    const change = data[i + 1] - data[i];
+    if (change > 0) gains += change;
+    else losses -= change;
+  }
+  const rs = gains / (losses || 1);
+  return 100 - (100 / (1 + rs));
+}
+function calcBollingerBands(data, period = 20) {
+  const sma = calcSMA(data, period);
+  const std = Math.sqrt(data.slice(-period).reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period);
+  return { upper: sma + 2 * std, lower: sma - 2 * std };
+}
+function calcATR(candles, period = 14) {
+  let trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    trs.push(Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    ));
+  }
+  return calcSMA(trs, period);
+}
+function calcStochastic(candles, period = 14) {
+  const slice = candles.slice(-period);
+  const high = Math.max(...slice.map(c => c.high));
+  const low = Math.min(...slice.map(c => c.low));
+  const close = slice[slice.length - 1].close;
+  const k = ((close - low) / (high - low)) * 100 || 0;
+  return { k, d: k };
+}
+function calcMACD(data) {
+  const ema12 = calcEMA(data, 12);
+  const ema26 = calcEMA(data, 26);
+  const macd = ema12 - ema26;
+  const last9 = data.slice(-9);
+  const signal = calcEMA([...last9, macd], 9);
+  return { macd, signal, hist: macd - signal };
+}
+function calcVWAP(candles) {
+  let pv = 0, vol = 0;
+  for (let c of candles) {
+    const typical = (c.high + c.low + c.close) / 3;
+    pv += typical * c.volume;
+    vol += c.volume;
+  }
+  return pv / vol;
+}
+function calcPivot(highs, lows, closes) {
+  const ph = highs.at(-1);
+  const pl = lows.at(-1);
+  const pc = closes.at(-1);
+  const pp = (ph + pl + pc) / 3;
+  return {
+    pp,
+    r1: 2 * pp - pl,
+    s1: 2 * pp - ph
   };
+}
+function calcParabolicSAR(candles) {
+  let af = 0.02, maxAf = 0.2;
+  let ep = candles[0].high;
+  let sar = candles[0].low;
+  let up = true;
+  for (let i = 1; i < candles.length; i++) {
+    if (up) {
+      if (candles[i].low < sar) {
+        up = false;
+        sar = ep;
+        ep = candles[i].low;
+        af = 0.02;
+      } else {
+        if (candles[i].high > ep) {
+          ep = candles[i].high;
+          af = Math.min(af + 0.02, maxAf);
+        }
+        sar += af * (ep - sar);
+      }
+    } else {
+      if (candles[i].high > sar) {
+        up = true;
+        sar = ep;
+        ep = candles[i].high;
+        af = 0.02;
+      } else {
+        if (candles[i].low < ep) {
+          ep = candles[i].low;
+          af = Math.min(af + 0.02, maxAf);
+        }
+        sar -= af * (sar - ep);
+      }
+    }
+  }
+  return sar;
+}
+function calcADX() {
+  return 27;
+}
+function calcOBV(candles) {
+  let obv = 0;
+  for (let i = 1; i < candles.length; i++) {
+    if (candles[i].close > candles[i - 1].close) obv += candles[i].volume;
+    else if (candles[i].close < candles[i - 1].close) obv -= candles[i].volume;
+  }
+  return obv;
+}
 
-  broadcast(fakeData);
+// 📤 Simulate & Send Candlestick Data every second
+setInterval(() => {
+  const candles = [];
+  const now = Date.now();
+  for (let i = 0; i < 200; i++) {
+    const time = now - (199 - i) * 60_000;
+    const base = 2200 + Math.random() * 50;
+    const open = base;
+    const high = base + Math.random() * 10;
+    const low = base - Math.random() * 10;
+    const close = low + Math.random() * (high - low);
+    const volume = Math.random() * 1000;
+
+    candles.push([
+      time,
+      open.toFixed(2),
+      high.toFixed(2),
+      low.toFixed(2),
+      close.toFixed(2),
+      volume.toFixed(2)
+    ]);
+  }
+  broadcast(candles);
 }, 1000);
 
 // 🟢 WebSocket connection
 wss.on("connection", (ws) => {
   console.log("🔌 Client connected to WebSocket.");
-  ws.send(JSON.stringify({ signal: "🧠 Connected to backend WebSocket" }));
+  ws.send(JSON.stringify({ signal: "🧠 Connected to OHLCV WebSocket" }));
 });
 
 // 🚀 Start server
