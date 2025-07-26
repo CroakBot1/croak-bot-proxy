@@ -1,4 +1,3 @@
-// server.js – WebSocket + Express + Full Trading Logic + Indicator Calculations
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -36,6 +35,7 @@ function calcSMA(data, period) {
   const sum = slice.reduce((a, b) => a + b, 0);
   return sum / slice.length;
 }
+
 function calcEMA(data, period) {
   const k = 2 / (period + 1);
   let ema = data[data.length - period];
@@ -44,6 +44,7 @@ function calcEMA(data, period) {
   }
   return ema;
 }
+
 function calcRSI(data, period) {
   let gains = 0, losses = 0;
   for (let i = data.length - period; i < data.length - 1; i++) {
@@ -54,11 +55,13 @@ function calcRSI(data, period) {
   const rs = gains / (losses || 1);
   return 100 - (100 / (1 + rs));
 }
+
 function calcBollingerBands(data, period = 20) {
   const sma = calcSMA(data, period);
   const std = Math.sqrt(data.slice(-period).reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period);
   return { upper: sma + 2 * std, lower: sma - 2 * std };
 }
+
 function calcATR(candles, period = 14) {
   let trs = [];
   for (let i = 1; i < candles.length; i++) {
@@ -70,6 +73,7 @@ function calcATR(candles, period = 14) {
   }
   return calcSMA(trs, period);
 }
+
 function calcStochastic(candles, period = 14) {
   const slice = candles.slice(-period);
   const high = Math.max(...slice.map(c => c.high));
@@ -78,6 +82,7 @@ function calcStochastic(candles, period = 14) {
   const k = ((close - low) / (high - low)) * 100 || 0;
   return { k, d: k };
 }
+
 function calcMACD(data) {
   const ema12 = calcEMA(data, 12);
   const ema26 = calcEMA(data, 26);
@@ -86,6 +91,7 @@ function calcMACD(data) {
   const signal = calcEMA([...last9, macd], 9);
   return { macd, signal, hist: macd - signal };
 }
+
 function calcVWAP(candles) {
   let pv = 0, vol = 0;
   for (let c of candles) {
@@ -95,6 +101,7 @@ function calcVWAP(candles) {
   }
   return pv / vol;
 }
+
 function calcPivot(highs, lows, closes) {
   const ph = highs.at(-1);
   const pl = lows.at(-1);
@@ -106,6 +113,7 @@ function calcPivot(highs, lows, closes) {
     s1: 2 * pp - ph
   };
 }
+
 function calcParabolicSAR(candles) {
   let af = 0.02, maxAf = 0.2;
   let ep = candles[0].high;
@@ -142,16 +150,56 @@ function calcParabolicSAR(candles) {
   }
   return sar;
 }
-function calcADX() {
-  return 27;
-}
-function calcOBV(candles) {
-  let obv = 0;
+
+// 📊 ADX Calculation
+function calcADX(candles, period = 14) {
+  let plusDM = 0, minusDM = 0, TR = 0;
+  let plusDI = 0, minusDI = 0;
+
   for (let i = 1; i < candles.length; i++) {
-    if (candles[i].close > candles[i - 1].close) obv += candles[i].volume;
-    else if (candles[i].close < candles[i - 1].close) obv -= candles[i].volume;
+    const highPrev = candles[i - 1].high;
+    const high = candles[i].high;
+    const lowPrev = candles[i - 1].low;
+    const low = candles[i].low;
+    const closePrev = candles[i - 1].close;
+    const close = candles[i].close;
+
+    const plusDMValue = high - highPrev;
+    const minusDMValue = lowPrev - low;
+
+    if (plusDMValue > minusDMValue && plusDMValue > 0) {
+      plusDM = plusDMValue;
+    } else {
+      plusDM = 0;
+    }
+
+    if (minusDMValue > plusDMValue && minusDMValue > 0) {
+      minusDM = minusDMValue;
+    } else {
+      minusDM = 0;
+    }
+
+    const tr = Math.max(high - low, Math.abs(high - closePrev), Math.abs(low - closePrev));
+
+    TR += tr;
+
+    plusDI += plusDM;
+    minusDI += minusDM;
+
+    // Debugging: Log intermediate values
+    console.log(`Candle ${i} - PlusDM: ${plusDM}, MinusDM: ${minusDM}, TR: ${tr}, PlusDI: ${plusDI}, MinusDI: ${minusDI}`);
   }
-  return obv;
+
+  const smoothedTR = TR / period;
+  const smoothedPlusDI = plusDI / period;
+  const smoothedMinusDI = minusDI / period;
+
+  const dx = Math.abs(smoothedPlusDI - smoothedMinusDI) / (smoothedPlusDI + smoothedMinusDI) * 100;
+
+  console.log(`Smoothed PlusDI: ${smoothedPlusDI}, Smoothed MinusDI: ${smoothedMinusDI}`);
+  console.log(`ADX: ${dx}`);
+
+  return dx;
 }
 
 // 📤 Simulate & Send Candlestick Data every second
@@ -176,6 +224,11 @@ setInterval(() => {
       volume.toFixed(2)
     ]);
   }
+
+  // Calculate ADX for the new candle data
+  const adx = calcADX(candles);
+  console.log(`Calculated ADX: ${adx}`);
+
   broadcast(candles);
 }, 1000);
 
