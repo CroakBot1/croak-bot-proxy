@@ -1,12 +1,24 @@
-git add .
-git commit -m "Clean render deploy setup"
-git push
-git add src/backend-trader/abi/erc20.json
-git commit -m "Add missing ERC20 ABI file"
-git push
-git add src/backend-trader/abi/erc20.json
-git commit -m "Add missing erc20.json ABI"
-git push
-git add .
-git commit -m "Fix: Completed amountOutMin assignment"
-git push
+# Node dependencies
+node_modules/
+
+# Environment variables (if you use them later)
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime files
+pids
+*.pid
+*.seed
+
+# Optional: OS / IDE junk
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
