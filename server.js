@@ -1,5 +1,3 @@
-// 📦 Full Backend – Live Bybit + All Indicators
-
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -14,7 +12,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
 
-// ✅ CRON PING endpoint
 app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received from cron job`);
@@ -35,7 +32,6 @@ function sma(data, period) {
   const slice = data.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / period;
 }
-
 function ema(data, period) {
   const k = 2 / (period + 1);
   let ema = data[data.length - period];
@@ -44,13 +40,11 @@ function ema(data, period) {
   }
   return ema;
 }
-
 function macd(data) {
   const line = ema(data, 12) - ema(data, 26);
   const signal = ema([...data.slice(-9), line], 9);
   return { macd: line, signal, hist: line - signal };
 }
-
 function rsi(data, period = 14) {
   let gain = 0, loss = 0;
   for (let i = data.length - period; i < data.length - 1; i++) {
@@ -61,22 +55,19 @@ function rsi(data, period = 14) {
   const rs = gain / (loss || 1);
   return 100 - (100 / (1 + rs));
 }
-
 function stochastic(candles, period = 14) {
   const slice = candles.slice(-period);
   const high = Math.max(...slice.map(c => c.high));
   const low = Math.min(...slice.map(c => c.low));
   const close = slice[slice.length - 1].close;
   const k = ((close - low) / (high - low)) * 100;
-  return { k, d: k }; // Simplified D
+  return { k, d: k };
 }
-
 function bollinger(data, period = 20) {
   const ma = sma(data, period);
   const std = Math.sqrt(data.slice(-period).reduce((s, v) => s + Math.pow(v - ma, 2), 0) / period);
   return { upper: ma + 2 * std, lower: ma - 2 * std };
 }
-
 function atr(candles, period = 14) {
   const trs = [];
   for (let i = 1; i < candles.length; i++) {
@@ -90,7 +81,6 @@ function atr(candles, period = 14) {
   }
   return sma(trs, period);
 }
-
 function adx(candles, period = 14) {
   let plusDM = 0, minusDM = 0, TR = 0;
   for (let i = 1; i < candles.length; i++) {
@@ -107,7 +97,6 @@ function adx(candles, period = 14) {
   const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100;
   return { adx: dx, plusDI, minusDI };
 }
-
 function parabolicSAR(candles) {
   let af = 0.02, maxAf = 0.2, ep = candles[0].high, sar = candles[0].low, up = true;
   for (let i = 1; i < candles.length; i++) {
@@ -141,7 +130,6 @@ function parabolicSAR(candles) {
   }
   return sar;
 }
-
 function vwap(candles) {
   let pv = 0, vol = 0;
   for (const c of candles) {
@@ -151,7 +139,6 @@ function vwap(candles) {
   }
   return pv / vol;
 }
-
 function obv(candles) {
   let obv = 0;
   for (let i = 1; i < candles.length; i++) {
@@ -160,13 +147,11 @@ function obv(candles) {
   }
   return obv;
 }
-
 function pivot(highs, lows, closes) {
   const ph = highs.at(-1), pl = lows.at(-1), pc = closes.at(-1);
   const pp = (ph + pl + pc) / 3;
   return { pp, r1: 2 * pp - pl, s1: 2 * pp - ph };
 }
-
 function donchian(candles, period = 20) {
   const slice = candles.slice(-period);
   return {
@@ -175,20 +160,31 @@ function donchian(candles, period = 20) {
   };
 }
 
-// === Store Candles ===
-let candles = [];
+// === Candle Storage Per Timeframe ===
+const timeframeMap = {
+  '1': { label: '1m', candles: [] },
+  '5': { label: '5m', candles: [] },
+  '15': { label: '15m', candles: [] },
+};
 
 // === Connect to Bybit WebSocket ===
 const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
 
 bybitWS.on("open", () => {
   console.log("✅ Connected to Bybit WebSocket");
-  bybitWS.send(JSON.stringify({ op: "subscribe", args: ["kline.BTCUSDT.1"] }));
+  bybitWS.send(JSON.stringify({
+    op: "subscribe",
+    args: ["kline.ETHUSDT.1", "kline.ETHUSDT.5", "kline.ETHUSDT.15"]
+  }));
 });
 
 bybitWS.on("message", (msg) => {
   const parsed = JSON.parse(msg);
   if (!parsed.data || !parsed.topic.includes("kline")) return;
+
+  const [_, symbol, interval] = parsed.topic.split(".");
+  const tfData = timeframeMap[interval];
+  if (!tfData) return;
 
   const k = parsed.data;
   const candle = {
@@ -200,37 +196,37 @@ bybitWS.on("message", (msg) => {
     volume: parseFloat(k.volume)
   };
 
-  candles.push(candle);
-  if (candles.length > 200) candles.shift();
+  tfData.candles.push(candle);
+  if (tfData.candles.length > 200) tfData.candles.shift();
 
-  if (candles.length >= 20) {
-    const closes = candles.map(c => c.close);
-    const highs = candles.map(c => c.high);
-    const lows = candles.map(c => c.low);
+  if (tfData.candles.length >= 20) {
+    const closes = tfData.candles.map(c => c.close);
+    const highs = tfData.candles.map(c => c.high);
+    const lows = tfData.candles.map(c => c.low);
 
     const indicators = {
       SMA14: sma(closes, 14),
       EMA14: ema(closes, 14),
       MACD: macd(closes),
-      ParabolicSAR: parabolicSAR(candles),
-      ...adx(candles),
+      ParabolicSAR: parabolicSAR(tfData.candles),
+      ...adx(tfData.candles),
       RSI14: rsi(closes),
-      Stoch: stochastic(candles),
+      Stoch: stochastic(tfData.candles),
       Bollinger: bollinger(closes),
-      ATR: atr(candles),
-      Donchian: donchian(candles),
-      VWAP: vwap(candles),
-      OBV: obv(candles),
+      ATR: atr(tfData.candles),
+      Donchian: donchian(tfData.candles),
+      VWAP: vwap(tfData.candles),
+      OBV: obv(tfData.candles),
       Pivot: pivot(highs, lows, closes)
     };
 
-    broadcast({ time: candle.time, indicators });
+    broadcast({ time: candle.time, timeframe: tfData.label, indicators });
   }
 });
 
 wss.on("connection", (ws) => {
   console.log("🔌 Client connected");
-  ws.send(JSON.stringify({ signal: "🧠 Connected to Indicator Feed" }));
+  ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Multi-Timeframe Indicator Feed" }));
 });
 
 server.listen(PORT, () => {
