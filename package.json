@@ -1,7 +1,7 @@
 {
   "name": "eth-indicator-backend",
   "version": "1.0.0",
-  "description": "Live ETH/USDT multi-timeframe indicator feed using Bybit WebSocket",
+  "description": "ETH Multi-Timeframe Indicator Backend for Croak Bot",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,16 +9,19 @@
   "keywords": [
     "bybit",
     "websocket",
+    "crypto",
     "indicators",
-    "ethusdt",
-    "multi-timeframe",
-    "realtime"
+    "ETHUSDT",
+    "bot"
   ],
-  "author": "Croak Labs",
+  "author": "CroakBot",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "ws": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
