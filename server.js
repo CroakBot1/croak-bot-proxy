@@ -10,16 +10,17 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000; // ✅ Render-compatible port
+// ✅ Render-compatible PORT binding (critical fix)
+const PORT = process.env.PORT || 3000;
 
-// === CRON or Health Check ===
+// === Health Check Route ===
 app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received`);
   res.send("✅ Ping OK: " + now);
 });
 
-// === Broadcast function ===
+// === WebSocket Broadcast ===
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -162,14 +163,14 @@ function donchian(candles, period = 20) {
   };
 }
 
-// === Timeframes to track ===
+// === Timeframes tracked ===
 const timeframes = {
   "1m": { candles: [], label: "1m" },
   "5m": { candles: [], label: "5m" },
   "15m": { candles: [], label: "15m" }
 };
 
-// === Connect to Bybit WebSocket ===
+// === Connect to Bybit ===
 const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
 
 bybitWS.on("open", () => {
@@ -184,7 +185,7 @@ bybitWS.on("message", (msg) => {
   const parsed = JSON.parse(msg);
   if (!parsed.data || !parsed.topic.includes("kline")) return;
 
-  const tfKey = parsed.topic.split(".").at(-1); // 1, 5, 15
+  const tfKey = parsed.topic.split(".").at(-1); // "1", "5", "15"
   const tfData = timeframes[tfKey + "m"];
   if (!tfData) return;
 
@@ -227,11 +228,13 @@ bybitWS.on("message", (msg) => {
   }
 });
 
+// === WebSocket listener ===
 wss.on("connection", (ws) => {
-  console.log("🔌 WebSocket client connected");
-  ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Multi-Timeframe Indicator Feed" }));
+  console.log("🔌 Client connected via WebSocket");
+  ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Indicator Feed" }));
 });
 
+// === Start server ===
 server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
