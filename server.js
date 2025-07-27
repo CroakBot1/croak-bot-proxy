@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
+const fetch = require("node-fetch"); // ✅ for self-ping
 
 const app = express();
 const server = http.createServer(app);
@@ -10,7 +11,6 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-// ✅ Render-compatible port binding (no fallback)
 const PORT = process.env.PORT;
 
 // === Ping route
@@ -20,6 +20,7 @@ app.get("/ping", (req, res) => {
   res.send("✅ Ping OK: " + now);
 });
 
+// === Broadcast function
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -29,7 +30,7 @@ function broadcast(data) {
   });
 }
 
-// === Indicator functions
+// === Indicator Functions
 function sma(data, period) {
   const slice = data.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / period;
@@ -176,3 +177,11 @@ wss.on("connection", (ws) => {
 server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
+
+// === Keep-alive self ping (every 10 minutes)
+setInterval(() => {
+  fetch("https://croak-bot-proxy.onrender.com/ping")
+    .then(res => res.text())
+    .then(txt => console.log("💓 Self-ping:", txt))
+    .catch(err => console.error("❌ Self-ping failed:", err));
+}, 10 * 60 * 1000);
