@@ -10,14 +10,16 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000; // ✅ Render-compatible port
 
+// === CRON or Health Check ===
 app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
-  console.log(`[${now}] 🔁 Ping received from cron job`);
+  console.log(`[${now}] 🔁 Ping received`);
   res.send("✅ Ping OK: " + now);
 });
 
+// === Broadcast function ===
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -34,11 +36,11 @@ function sma(data, period) {
 }
 function ema(data, period) {
   const k = 2 / (period + 1);
-  let ema = data[data.length - period];
+  let emaVal = data[data.length - period];
   for (let i = data.length - period + 1; i < data.length; i++) {
-    ema = data[i] * k + ema * (1 - k);
+    emaVal = data[i] * k + emaVal * (1 - k);
   }
-  return ema;
+  return emaVal;
 }
 function macd(data) {
   const line = ema(data, 12) - ema(data, 26);
@@ -160,11 +162,11 @@ function donchian(candles, period = 20) {
   };
 }
 
-// === Candle Storage Per Timeframe ===
-const timeframeMap = {
-  '1': { label: '1m', candles: [] },
-  '5': { label: '5m', candles: [] },
-  '15': { label: '15m', candles: [] },
+// === Timeframes to track ===
+const timeframes = {
+  "1m": { candles: [], label: "1m" },
+  "5m": { candles: [], label: "5m" },
+  "15m": { candles: [], label: "15m" }
 };
 
 // === Connect to Bybit WebSocket ===
@@ -182,13 +184,13 @@ bybitWS.on("message", (msg) => {
   const parsed = JSON.parse(msg);
   if (!parsed.data || !parsed.topic.includes("kline")) return;
 
-  const [_, symbol, interval] = parsed.topic.split(".");
-  const tfData = timeframeMap[interval];
+  const tfKey = parsed.topic.split(".").at(-1); // 1, 5, 15
+  const tfData = timeframes[tfKey + "m"];
   if (!tfData) return;
 
   const k = parsed.data;
   const candle = {
-    time: new Date(k.start).getTime(),
+    time: k.start,
     open: parseFloat(k.open),
     high: parseFloat(k.high),
     low: parseFloat(k.low),
@@ -220,12 +222,13 @@ bybitWS.on("message", (msg) => {
       Pivot: pivot(highs, lows, closes)
     };
 
+    console.log(`📤 Sending ${tfData.label}`, indicators);
     broadcast({ time: candle.time, timeframe: tfData.label, indicators });
   }
 });
 
 wss.on("connection", (ws) => {
-  console.log("🔌 Client connected");
+  console.log("🔌 WebSocket client connected");
   ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Multi-Timeframe Indicator Feed" }));
 });
 
