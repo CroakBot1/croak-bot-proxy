@@ -12,7 +12,8 @@
     "crypto",
     "indicators",
     "ETHUSDT",
-    "bot"
+    "multi-timeframe",
+    "trading"
   ],
   "author": "CroakBot",
   "license": "MIT",
