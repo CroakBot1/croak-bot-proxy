@@ -1,3 +1,5 @@
+// 📦 Full Backend – Live Bybit + All Indicators
+
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -13,13 +15,12 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 
 // ✅ CRON PING endpoint
-app.get('/ping', (req, res) => {
+app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received from cron job`);
-  res.send('✅ Ping OK: ' + now);
+  res.send("✅ Ping OK: " + now);
 });
 
-// 🔄 Broadcast function
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -29,14 +30,13 @@ function broadcast(data) {
   });
 }
 
-// 📊 Indicator Calculations
-function calcSMA(data, period) {
+// === Indicator Functions ===
+function sma(data, period) {
   const slice = data.slice(-period);
-  const sum = slice.reduce((a, b) => a + b, 0);
-  return sum / slice.length;
+  return slice.reduce((a, b) => a + b, 0) / period;
 }
 
-function calcEMA(data, period) {
+function ema(data, period) {
   const k = 2 / (period + 1);
   let ema = data[data.length - period];
   for (let i = data.length - period + 1; i < data.length; i++) {
@@ -45,80 +45,71 @@ function calcEMA(data, period) {
   return ema;
 }
 
-function calcRSI(data, period) {
-  let gains = 0, losses = 0;
+function macd(data) {
+  const line = ema(data, 12) - ema(data, 26);
+  const signal = ema([...data.slice(-9), line], 9);
+  return { macd: line, signal, hist: line - signal };
+}
+
+function rsi(data, period = 14) {
+  let gain = 0, loss = 0;
   for (let i = data.length - period; i < data.length - 1; i++) {
-    const change = data[i + 1] - data[i];
-    if (change > 0) gains += change;
-    else losses -= change;
+    const delta = data[i + 1] - data[i];
+    gain += Math.max(0, delta);
+    loss += Math.max(0, -delta);
   }
-  const rs = gains / (losses || 1);
+  const rs = gain / (loss || 1);
   return 100 - (100 / (1 + rs));
 }
 
-function calcBollingerBands(data, period = 20) {
-  const sma = calcSMA(data, period);
-  const std = Math.sqrt(data.slice(-period).reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period);
-  return { upper: sma + 2 * std, lower: sma - 2 * std };
-}
-
-function calcATR(candles, period = 14) {
-  let trs = [];
-  for (let i = 1; i < candles.length; i++) {
-    trs.push(Math.max(
-      candles[i].high - candles[i].low,
-      Math.abs(candles[i].high - candles[i - 1].close),
-      Math.abs(candles[i].low - candles[i - 1].close)
-    ));
-  }
-  return calcSMA(trs, period);
-}
-
-function calcStochastic(candles, period = 14) {
+function stochastic(candles, period = 14) {
   const slice = candles.slice(-period);
   const high = Math.max(...slice.map(c => c.high));
   const low = Math.min(...slice.map(c => c.low));
   const close = slice[slice.length - 1].close;
-  const k = ((close - low) / (high - low)) * 100 || 0;
-  return { k, d: k };
+  const k = ((close - low) / (high - low)) * 100;
+  return { k, d: k }; // Simplified D
 }
 
-function calcMACD(data) {
-  const ema12 = calcEMA(data, 12);
-  const ema26 = calcEMA(data, 26);
-  const macd = ema12 - ema26;
-  const last9 = data.slice(-9);
-  const signal = calcEMA([...last9, macd], 9);
-  return { macd, signal, hist: macd - signal };
+function bollinger(data, period = 20) {
+  const ma = sma(data, period);
+  const std = Math.sqrt(data.slice(-period).reduce((s, v) => s + Math.pow(v - ma, 2), 0) / period);
+  return { upper: ma + 2 * std, lower: ma - 2 * std };
 }
 
-function calcVWAP(candles) {
-  let pv = 0, vol = 0;
-  for (let c of candles) {
-    const typical = (c.high + c.low + c.close) / 3;
-    pv += typical * c.volume;
-    vol += c.volume;
+function atr(candles, period = 14) {
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const prev = candles[i - 1];
+    const curr = candles[i];
+    trs.push(Math.max(
+      curr.high - curr.low,
+      Math.abs(curr.high - prev.close),
+      Math.abs(curr.low - prev.close)
+    ));
   }
-  return pv / vol;
+  return sma(trs, period);
 }
 
-function calcPivot(highs, lows, closes) {
-  const ph = highs.at(-1);
-  const pl = lows.at(-1);
-  const pc = closes.at(-1);
-  const pp = (ph + pl + pc) / 3;
-  return {
-    pp,
-    r1: 2 * pp - pl,
-    s1: 2 * pp - ph
-  };
+function adx(candles, period = 14) {
+  let plusDM = 0, minusDM = 0, TR = 0;
+  for (let i = 1; i < candles.length; i++) {
+    const curr = candles[i];
+    const prev = candles[i - 1];
+    const plus = curr.high - prev.high;
+    const minus = prev.low - curr.low;
+    plusDM += plus > minus && plus > 0 ? plus : 0;
+    minusDM += minus > plus && minus > 0 ? minus : 0;
+    TR += Math.max(curr.high - curr.low, Math.abs(curr.high - prev.close), Math.abs(curr.low - prev.close));
+  }
+  const plusDI = (plusDM / TR) * 100;
+  const minusDI = (minusDM / TR) * 100;
+  const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100;
+  return { adx: dx, plusDI, minusDI };
 }
 
-function calcParabolicSAR(candles) {
-  let af = 0.02, maxAf = 0.2;
-  let ep = candles[0].high;
-  let sar = candles[0].low;
-  let up = true;
+function parabolicSAR(candles) {
+  let af = 0.02, maxAf = 0.2, ep = candles[0].high, sar = candles[0].low, up = true;
   for (let i = 1; i < candles.length; i++) {
     if (up) {
       if (candles[i].low < sar) {
@@ -151,94 +142,97 @@ function calcParabolicSAR(candles) {
   return sar;
 }
 
-// 📊 ADX Calculation
-function calcADX(candles, period = 14) {
-  let plusDM = 0, minusDM = 0, TR = 0;
-  let plusDI = 0, minusDI = 0;
-
-  for (let i = 1; i < candles.length; i++) {
-    const highPrev = candles[i - 1].high;
-    const high = candles[i].high;
-    const lowPrev = candles[i - 1].low;
-    const low = candles[i].low;
-    const closePrev = candles[i - 1].close;
-    const close = candles[i].close;
-
-    const plusDMValue = high - highPrev;
-    const minusDMValue = lowPrev - low;
-
-    if (plusDMValue > minusDMValue && plusDMValue > 0) {
-      plusDM = plusDMValue;
-    } else {
-      plusDM = 0;
-    }
-
-    if (minusDMValue > plusDMValue && minusDMValue > 0) {
-      minusDM = minusDMValue;
-    } else {
-      minusDM = 0;
-    }
-
-    const tr = Math.max(high - low, Math.abs(high - closePrev), Math.abs(low - closePrev));
-
-    TR += tr;
-
-    plusDI += plusDM;
-    minusDI += minusDM;
-
-    // Debugging: Log intermediate values
-    console.log(`Candle ${i} - PlusDM: ${plusDM}, MinusDM: ${minusDM}, TR: ${tr}, PlusDI: ${plusDI}, MinusDI: ${minusDI}`);
+function vwap(candles) {
+  let pv = 0, vol = 0;
+  for (const c of candles) {
+    const typical = (c.high + c.low + c.close) / 3;
+    pv += typical * c.volume;
+    vol += c.volume;
   }
-
-  const smoothedTR = TR / period;
-  const smoothedPlusDI = plusDI / period;
-  const smoothedMinusDI = minusDI / period;
-
-  const dx = Math.abs(smoothedPlusDI - smoothedMinusDI) / (smoothedPlusDI + smoothedMinusDI) * 100;
-
-  console.log(`Smoothed PlusDI: ${smoothedPlusDI}, Smoothed MinusDI: ${smoothedMinusDI}`);
-  console.log(`ADX: ${dx}`);
-
-  return dx;
+  return pv / vol;
 }
 
-// 📤 Simulate & Send Candlestick Data every second
-setInterval(() => {
-  const candles = [];
-  const now = Date.now();
-  for (let i = 0; i < 200; i++) {
-    const time = now - (199 - i) * 60_000;
-    const base = 2200 + Math.random() * 50;
-    const open = base;
-    const high = base + Math.random() * 10;
-    const low = base - Math.random() * 10;
-    const close = low + Math.random() * (high - low);
-    const volume = Math.random() * 1000;
-
-    candles.push([
-      time,
-      open.toFixed(2),
-      high.toFixed(2),
-      low.toFixed(2),
-      close.toFixed(2),
-      volume.toFixed(2)
-    ]);
+function obv(candles) {
+  let obv = 0;
+  for (let i = 1; i < candles.length; i++) {
+    const delta = candles[i].close - candles[i - 1].close;
+    obv += delta > 0 ? candles[i].volume : delta < 0 ? -candles[i].volume : 0;
   }
+  return obv;
+}
 
-  // Calculate ADX for the new candle data
-  const adx = calcADX(candles);
-  console.log(`Calculated ADX: ${adx}`);
+function pivot(highs, lows, closes) {
+  const ph = highs.at(-1), pl = lows.at(-1), pc = closes.at(-1);
+  const pp = (ph + pl + pc) / 3;
+  return { pp, r1: 2 * pp - pl, s1: 2 * pp - ph };
+}
 
-  broadcast(candles);
-}, 1000);
+function donchian(candles, period = 20) {
+  const slice = candles.slice(-period);
+  return {
+    high: Math.max(...slice.map(c => c.high)),
+    low: Math.min(...slice.map(c => c.low))
+  };
+}
 
-// 🟢 WebSocket connection
-wss.on("connection", (ws) => {
-  console.log("🔌 Client connected to WebSocket.");
-  ws.send(JSON.stringify({ signal: "🧠 Connected to OHLCV WebSocket" }));
+// === Store Candles ===
+let candles = [];
+
+// === Connect to Bybit WebSocket ===
+const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
+
+bybitWS.on("open", () => {
+  console.log("✅ Connected to Bybit WebSocket");
+  bybitWS.send(JSON.stringify({ op: "subscribe", args: ["kline.BTCUSDT.1"] }));
 });
 
-// 🚀 Start server
+bybitWS.on("message", (msg) => {
+  const parsed = JSON.parse(msg);
+  if (!parsed.data || !parsed.topic.includes("kline")) return;
+
+  const k = parsed.data;
+  const candle = {
+    time: new Date(k.start).getTime(),
+    open: parseFloat(k.open),
+    high: parseFloat(k.high),
+    low: parseFloat(k.low),
+    close: parseFloat(k.close),
+    volume: parseFloat(k.volume)
+  };
+
+  candles.push(candle);
+  if (candles.length > 200) candles.shift();
+
+  if (candles.length >= 20) {
+    const closes = candles.map(c => c.close);
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
+
+    const indicators = {
+      SMA14: sma(closes, 14),
+      EMA14: ema(closes, 14),
+      MACD: macd(closes),
+      ParabolicSAR: parabolicSAR(candles),
+      ...adx(candles),
+      RSI14: rsi(closes),
+      Stoch: stochastic(candles),
+      Bollinger: bollinger(closes),
+      ATR: atr(candles),
+      Donchian: donchian(candles),
+      VWAP: vwap(candles),
+      OBV: obv(candles),
+      Pivot: pivot(highs, lows, closes)
+    };
+
+    broadcast({ time: candle.time, indicators });
+  }
+});
+
+wss.on("connection", (ws) => {
+  console.log("🔌 Client connected");
+  ws.send(JSON.stringify({ signal: "🧠 Connected to Indicator Feed" }));
+});
+
 server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
