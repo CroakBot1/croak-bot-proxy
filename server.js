@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
-const fetch = require("node-fetch"); // ✅ for self-ping
+const fetch = require("node-fetch"); // ✅ v2.x for CommonJS compatibility
 
 const app = express();
 const server = http.createServer(app);
@@ -13,14 +13,14 @@ app.use(express.json());
 
 const PORT = process.env.PORT;
 
-// === Ping route
+// === Ping route for uptime check
 app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received`);
   res.send("✅ Ping OK: " + now);
 });
 
-// === Broadcast function
+// === Broadcast helper
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -30,7 +30,7 @@ function broadcast(data) {
   });
 }
 
-// === Indicator Functions
+// === Indicators
 function sma(data, period) {
   const slice = data.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / period;
@@ -110,14 +110,14 @@ function vwap(candles) {
   return pv / vol;
 }
 
-// === Store candles per timeframe
+// === Timeframe structure
 const timeframes = {
   "1m": { candles: [], label: "1m" },
   "5m": { candles: [], label: "5m" },
   "15m": { candles: [], label: "15m" }
 };
 
-// === Bybit WebSocket
+// === Bybit WS
 const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
 
 bybitWS.on("open", () => {
@@ -167,7 +167,7 @@ bybitWS.on("message", (msg) => {
   }
 });
 
-// === WebSocket client connection
+// === Client connect
 wss.on("connection", (ws) => {
   console.log("🔌 Client connected");
   ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Indicator Feed" }));
@@ -178,10 +178,10 @@ server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
 
-// === Keep-alive self ping (every 10 minutes)
+// === 🔁 Optional keep-alive (ping every 4 mins)
 setInterval(() => {
-  fetch("https://croak-bot-proxy.onrender.com/ping")
+  fetch(`https://croak-bot-proxy.onrender.com/ping`)
     .then(res => res.text())
-    .then(txt => console.log("💓 Self-ping:", txt))
-    .catch(err => console.error("❌ Self-ping failed:", err));
-}, 10 * 60 * 1000);
+    .then(text => console.log("🧬 Keep-alive:", text))
+    .catch(err => console.error("❌ Keep-alive error:", err.message));
+}, 1000 * 60 * 4);
