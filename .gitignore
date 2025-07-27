@@ -1,3 +1,6 @@
 git add server.js
 git commit -m "🔧 Fix: Use Render-assigned port only"
 git push
+git add server.js
+git commit -m "✅ Fix Render port binding"
+git push
