@@ -1,7 +1,7 @@
 {
   "name": "eth-indicator-backend",
   "version": "1.0.0",
-  "description": "ETH Multi-Timeframe Indicator Backend for Croak Bot",
+  "description": "ETH Multi-Timeframe Indicator Backend for Croak Bot with /ping endpoint for cron keep-alive",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,7 +12,10 @@
     "crypto",
     "indicators",
     "ETHUSDT",
-    "multi-timeframe"
+    "multi-timeframe",
+    "cron-keepalive",
+    "render",
+    "ping"
   ],
   "author": "CroakBot",
   "license": "MIT",
