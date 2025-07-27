@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
-const fetch = require("node-fetch"); // ✅ v2.x for CommonJS compatibility
+const fetch = require("node-fetch"); // ✅ Use v2.x for CommonJS compatibility
 
 const app = express();
 const server = http.createServer(app);
@@ -20,7 +20,7 @@ app.get("/ping", (req, res) => {
   res.send("✅ Ping OK: " + now);
 });
 
-// === Broadcast helper
+// === Broadcast to all WebSocket clients
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -30,7 +30,7 @@ function broadcast(data) {
   });
 }
 
-// === Indicators
+// === Indicator functions
 function sma(data, period) {
   const slice = data.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / period;
@@ -110,14 +110,14 @@ function vwap(candles) {
   return pv / vol;
 }
 
-// === Timeframe structure
+// === Store candles per timeframe
 const timeframes = {
   "1m": { candles: [], label: "1m" },
   "5m": { candles: [], label: "5m" },
   "15m": { candles: [], label: "15m" }
 };
 
-// === Bybit WS
+// === Bybit WebSocket connection
 const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
 
 bybitWS.on("open", () => {
@@ -132,11 +132,11 @@ bybitWS.on("message", (msg) => {
   const parsed = JSON.parse(msg);
   if (!parsed.data || !parsed.topic.includes("kline")) return;
 
-  const tfKey = parsed.topic.split(".").at(-1); // "1", "5", "15"
+  const tfKey = parsed.topic.split(".").at(-1); // "1", "5", or "15"
   const tfData = timeframes[tfKey + "m"];
   if (!tfData) return;
 
-  const k = parsed.data;
+  const k = parsed.data[0]; // ✅ FIX: access first candle in array
   const candle = {
     time: k.start,
     open: parseFloat(k.open),
@@ -167,20 +167,20 @@ bybitWS.on("message", (msg) => {
   }
 });
 
-// === Client connect
+// === Client connection handler
 wss.on("connection", (ws) => {
   console.log("🔌 Client connected");
   ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Indicator Feed" }));
 });
 
-// === Start server
+// === Start backend server
 server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
 
-// === 🔁 Optional keep-alive (ping every 4 mins)
+// === 🔁 Optional keep-alive (every 4 mins)
 setInterval(() => {
-  fetch(`https://croak-bot-proxy.onrender.com/ping`)
+  fetch("https://croak-bot-proxy.onrender.com/ping")
     .then(res => res.text())
     .then(text => console.log("🧬 Keep-alive:", text))
     .catch(err => console.error("❌ Keep-alive error:", err.message));
