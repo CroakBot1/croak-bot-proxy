@@ -10,17 +10,16 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 
-// ✅ Render-compatible PORT binding (critical fix)
-const PORT = process.env.PORT || 3000;
+// ✅ Render-compatible port binding (no fallback)
+const PORT = process.env.PORT;
 
-// === Health Check Route ===
+// === Ping route
 app.get("/ping", (req, res) => {
   const now = new Date().toISOString();
   console.log(`[${now}] 🔁 Ping received`);
   res.send("✅ Ping OK: " + now);
 });
 
-// === WebSocket Broadcast ===
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -30,7 +29,7 @@ function broadcast(data) {
   });
 }
 
-// === Indicator Functions ===
+// === Indicator functions
 function sma(data, period) {
   const slice = data.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / period;
@@ -100,39 +99,6 @@ function adx(candles, period = 14) {
   const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100;
   return { adx: dx, plusDI, minusDI };
 }
-function parabolicSAR(candles) {
-  let af = 0.02, maxAf = 0.2, ep = candles[0].high, sar = candles[0].low, up = true;
-  for (let i = 1; i < candles.length; i++) {
-    if (up) {
-      if (candles[i].low < sar) {
-        up = false;
-        sar = ep;
-        ep = candles[i].low;
-        af = 0.02;
-      } else {
-        if (candles[i].high > ep) {
-          ep = candles[i].high;
-          af = Math.min(af + 0.02, maxAf);
-        }
-        sar += af * (ep - sar);
-      }
-    } else {
-      if (candles[i].high > sar) {
-        up = true;
-        sar = ep;
-        ep = candles[i].high;
-        af = 0.02;
-      } else {
-        if (candles[i].low < ep) {
-          ep = candles[i].low;
-          af = Math.min(af + 0.02, maxAf);
-        }
-        sar -= af * (sar - ep);
-      }
-    }
-  }
-  return sar;
-}
 function vwap(candles) {
   let pv = 0, vol = 0;
   for (const c of candles) {
@@ -142,35 +108,15 @@ function vwap(candles) {
   }
   return pv / vol;
 }
-function obv(candles) {
-  let obv = 0;
-  for (let i = 1; i < candles.length; i++) {
-    const delta = candles[i].close - candles[i - 1].close;
-    obv += delta > 0 ? candles[i].volume : delta < 0 ? -candles[i].volume : 0;
-  }
-  return obv;
-}
-function pivot(highs, lows, closes) {
-  const ph = highs.at(-1), pl = lows.at(-1), pc = closes.at(-1);
-  const pp = (ph + pl + pc) / 3;
-  return { pp, r1: 2 * pp - pl, s1: 2 * pp - ph };
-}
-function donchian(candles, period = 20) {
-  const slice = candles.slice(-period);
-  return {
-    high: Math.max(...slice.map(c => c.high)),
-    low: Math.min(...slice.map(c => c.low))
-  };
-}
 
-// === Timeframes tracked ===
+// === Store candles per timeframe
 const timeframes = {
   "1m": { candles: [], label: "1m" },
   "5m": { candles: [], label: "5m" },
   "15m": { candles: [], label: "15m" }
 };
 
-// === Connect to Bybit ===
+// === Bybit WebSocket
 const bybitWS = new WebSocket("wss://stream.bybit.com/v5/public/linear");
 
 bybitWS.on("open", () => {
@@ -204,37 +150,29 @@ bybitWS.on("message", (msg) => {
 
   if (tfData.candles.length >= 20) {
     const closes = tfData.candles.map(c => c.close);
-    const highs = tfData.candles.map(c => c.high);
-    const lows = tfData.candles.map(c => c.low);
-
     const indicators = {
       SMA14: sma(closes, 14),
       EMA14: ema(closes, 14),
       MACD: macd(closes),
-      ParabolicSAR: parabolicSAR(tfData.candles),
-      ...adx(tfData.candles),
       RSI14: rsi(closes),
       Stoch: stochastic(tfData.candles),
       Bollinger: bollinger(closes),
       ATR: atr(tfData.candles),
-      Donchian: donchian(tfData.candles),
-      VWAP: vwap(tfData.candles),
-      OBV: obv(tfData.candles),
-      Pivot: pivot(highs, lows, closes)
+      ADX: adx(tfData.candles),
+      VWAP: vwap(tfData.candles)
     };
 
-    console.log(`📤 Sending ${tfData.label}`, indicators);
     broadcast({ time: candle.time, timeframe: tfData.label, indicators });
   }
 });
 
-// === WebSocket listener ===
+// === WebSocket client connection
 wss.on("connection", (ws) => {
-  console.log("🔌 Client connected via WebSocket");
+  console.log("🔌 Client connected");
   ws.send(JSON.stringify({ signal: "🧠 Connected to ETH Indicator Feed" }));
 });
 
-// === Start server ===
+// === Start server
 server.listen(PORT, () => {
   console.log(`🚀 CROAK BOT BACKEND LIVE on port ${PORT}`);
 });
