@@ -1,24 +1,3 @@
-# Node dependencies
-node_modules/
-
-# Environment variables (if you use them later)
-.env
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime files
-pids
-*.pid
-*.seed
-
-# Optional: OS / IDE junk
-.DS_Store
-*.swp
-*.swo
-.vscode/
-.idea/
+git add server.js
+git commit -m "🔧 Fix: Use Render-assigned port only"
+git push
