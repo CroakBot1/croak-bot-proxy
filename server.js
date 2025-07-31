@@ -8,24 +8,20 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const allowedHashes = [
-  "9e9e7a3549c867473f573b4d6bafe2" // replace with your real hashes
+  "9e9e7a3549c867473f573b4d6bafe2" // example only
 ];
 
-const uuidToIP = {}; // Only locks 1 IP per UUID forever
+const uuidToIP = {};
 
-// ✅ Health check for Render
 app.get("/", (req, res) => {
   res.send("✅ UUID Validator Server is alive");
 });
 
-// ✅ UUID lock handler
 app.post("/validate", (req, res) => {
   const uuid = req.body.uuid?.trim();
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-  if (!uuid) {
-    return res.status(400).json({ status: "fail", reason: "UUID missing" });
-  }
+  if (!uuid) return res.status(400).json({ status: "fail", reason: "UUID missing" });
 
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
   const hash = crypto.createHash("sha256").update(uuid + "super-secret").digest("hex");
@@ -34,22 +30,18 @@ app.post("/validate", (req, res) => {
     return res.status(403).json({ status: "fail", reason: "UUID Invalid or Not Allowed" });
   }
 
-  // ✅ Allow only first IP to claim it
   if (!uuidToIP[uuid]) {
     uuidToIP[uuid] = ip;
     return res.json({ status: "ok", message: "✅ UUID validated and IP locked" });
   }
 
-  // ❌ If already locked by someone else
   if (uuidToIP[uuid] !== ip) {
     return res.status(403).json({ status: "fail", reason: "UUID already used by another IP" });
   }
 
-  // ✅ If same user (same UUID + same IP) retries
   return res.json({ status: "ok", message: "✅ UUID already validated by your IP" });
 });
 
-// ✅ Render-compatible PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 UUID Lock Server running on port ${PORT}`);
