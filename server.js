@@ -1,10 +1,10 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
-const axios = require("axios"); // for reverse ping
-const cron = require("node-cron");
-
+const cors = require("cors");
 const app = express();
+
+app.use(cors());
 app.use(bodyParser.json());
 
 const allowedHashes = [
@@ -13,7 +13,7 @@ const allowedHashes = [
 
 const ipToUUID = {};
 const uuidToIP = {};
-let lastPingedIP = null; // store last pinged IP for cron job
+let lastPingedIP = null;
 
 app.post("/validate", (req, res) => {
   const uuid = req.body.uuid?.trim();
@@ -36,7 +36,13 @@ app.post("/validate", (req, res) => {
 
   uuidToIP[uuid] = ip;
   ipToUUID[ip] = uuid;
-  lastPingedIP = ip; // update the last pinged IP
+  lastPingedIP = ip;
 
   return res.json({ status: "ok", message: "✅ UUID validated and locked to IP" });
+});
+
+// ✅ PORT fix for Render
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
