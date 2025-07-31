@@ -1,45 +1,44 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const crypto = require("crypto");
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const allowedHashes = [
-  "0cb53791bcf40c80ae58aa7d0a5c41e61bc4064e3e9248e1ff777c51403809d1",
-  "0e356d4308418a227173f376c44ff07f43a6255c53e5c209ed2320b6d4a7d28d",
-  "17a97375e730e6f9f71b681998dd2a4893c03d812a41de4c558f2e38f23e6b42",
-  "2ffdcde827ffcdaf9896a48f8de40947a16335ef14f78b405a02baf19c503cf6",
-  "382a15172c88edfc9610b32bc80e29575a9a9e6f8ed29a9d5e6d3ce89cc1a81a",
-  "3b80ebfd25798b5b1aa7254874b30f1a6f4dff06192f2ef27ce45009b7cf4b6b",
-  "3c8ab13fd2bb5df0886a99be4d5f92fd6e70bc5dbe8037fa0b5206f7d91d2e71",
-  "40d315c19e2c8f0bc96b21663b4ff3b469005066b9981c5c4efebf0a0ff30cf5",
-  "4373a2d2183a95a30b6c689a4d071b0c090137d0c3853d901c8b8b9626c2304e",
-  "47cf35d3f2b43bfc9bbcf4377c8e66abfd2f0d1a48fcd0802cb99d71fba59c52",
-  "4a4dd317e58df934d0f859e03a90b4c3b579d191cdb13f9bcb8fd75c316d4093",
-  "4db47b370a66e309cced4308088496d70d1590175b36290c99788f0136c98411",
-  "5d28bc36cc0fd36d5b3b0a72a23a179eb2ef8b0ed87d3ef89bd8a9796e4ec947",
-  "5f36a529258d72fe86ed12a5d76b238acdc7757f4037f772cbf7b38a9de10d7f",
-  "69a7a30cd8b2f85a87e2ee8d7fd21717a93f4c404ed1d7e23a33d68284d0d04f",
-  "6d2dfc98bc65bc23cfdc1b733b5c2969e3069f7c4cd470a589a74b7272df5c8b",
-  "6ee93020e5483277f94f01484684ed86130b87a81de55e58ec4a360ee0ec2893",
-  "6f796b4aeac95f2b603d5b1817e5704535b87989b2dfbd918d4e96205c4c9c14",
-  "713c0df4a3dd967c1d172385fd8ef78f89f678b9fe68a7c57fd4602ac6f3c0cc",
-  "76ed99e268aee4e6b76aa7e9c030404b29dd2f4cfd3500aeb2a87ff6e3c98c6b",
-  "8f0180504c010f5ad535c2460b5bb0ef1ae81630f58ff8803f44fd72b640e82b",
-  "9b9d98523ed041fdc54738d84dd888b24b83316db1b0b15bd76089b8e52951c6",
-  "a1903b209e4537cbf82cf793f3c12c3f13d95e5efcb4a9d9a6072715fd5ea83b",
-  "b89eb929fcf2bb93a76329f2ffb2313ff31bc0543de11a7f19836d9e8416c870",
-  "c0a3555aeea2ec15e235da118aa3888d1a6c2ce6632060f29ad4d2a2fd1eb07f",
-  "c70aa3a380fe81b9e1223e6e44a556a014de60b5393caa95c4fd393bdc258b7c",
-  "d612fd2db59e33274b8c2223e2b5e01e60b8048fd8621d61f6e97a5e5c1ebef6",
-  "d9f37cf571c9dc31d6c41ee37f382f17f713ed1b12303059dbb395a39829268c",
-  "e192d8e169a8b4d961aeb479f2c399f749ef0cb61ae2e8aa9c52b289f3b6f8f9",
-  "f366f57b251e9a679d2b4bc1a127808f016701ca104a2b90f7d8b602e7a5fcf3"
+// Replace with your allowed UUIDs directly
+const allowedUUIDs = [
+  "fb7c394b-4043-4870-882e-6dd2adbd7aa1",
+  "ff5a0a29-64fc-4ff5-b87d-b8f2d5589d46",
+  "355b2959-35b7-4086-a165-8a5077e73932",
+  "b0f9f36f-0d28-4f7e-89ec-8a63db8b88e0",
+  "f7cd0ff0-7c03-4ea3-98d4-92733f3e7c2e",
+  "58c6d038-7402-466b-b275-928ad92ff594",
+  "a2682340-3f1e-44f2-9442-f0c80dd3f22c",
+  "9d27d9c8-7c66-4e5a-ae02-bc48e2d3fa95",
+  "97e2f43e-ccbd-4af4-91cb-f77c9d682bf9",
+  "c808e9cd-b54a-41be-b94a-1f4e808da9d3",
+  "7eb9bc10-39fc-4ed9-b79a-94364bca6463",
+  "531107cf-e046-4f4a-a6c1-73e8f27e1c27",
+  "cced5507-5299-4a36-86cc-2a28285e9f4e",
+  "5e7ab0f4-1729-4915-8c93-116d241e1137",
+  "c07163f1-2ff1-4aa3-8c2c-f9e8c3be9160",
+  "07123a84-3db0-4fa8-8c7f-d5fd6c2ef8e7",
+  "62e0c4e8-064c-4555-842e-1e960d50f4ae",
+  "c65c726b-8461-4b34-b53a-fd4325ed5304",
+  "1a383a92-bdb1-4324-9429-cb8e79b12656",
+  "4b58c6cd-826b-40f5-8a3b-9e24658ee3e0",
+  "f9f9e5a4-099b-4e76-a6ef-09cf2997cc06",
+  "de53ac56-52c6-4171-93e4-5fa2db655489",
+  "87f9d2fc-7090-4c91-b92d-83936246bb49",
+  "73cd979d-f3d7-4a89-bb69-e1d3729dfc14",
+  "90f73bd6-48c0-470f-b2b3-8ae6a91da5f4",
+  "3b630e69-b5a1-4b36-bc82-99c44e01be60",
+  "bf757f15-9978-4d24-8d02-bc265d4e63c3",
+  "1c78a90c-55fc-42b5-91c5-238a0ad40f0c",
+  "eb5ac5a4-20e9-4d7b-bc6a-4457a3e8e625",
+  "147fc13b-8ff7-48c4-bb4b-6d17338ce130"
 ];
-
 
 const uuidToIP = {};
 
@@ -54,9 +53,8 @@ app.post("/validate", (req, res) => {
   if (!uuid) return res.status(400).json({ status: "fail", reason: "UUID missing" });
 
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-  const hash = crypto.createHash("sha256").update(uuid + "super-secret").digest("hex");
 
-  if (!isValidUUID || !allowedHashes.includes(hash)) {
+  if (!isValidUUID || !allowedUUIDs.includes(uuid)) {
     return res.status(403).json({ status: "fail", reason: "UUID Invalid or Not Allowed" });
   }
 
