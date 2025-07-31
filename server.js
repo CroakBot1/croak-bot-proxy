@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Replace with your allowed UUIDs directly
+// Plain allowed UUIDs
 const allowedUUIDs = [
   "fb7c394b-4043-4870-882e-6dd2adbd7aa1",
   "ff5a0a29-64fc-4ff5-b87d-b8f2d5589d46",
@@ -40,7 +40,9 @@ const allowedUUIDs = [
   "147fc13b-8ff7-48c4-bb4b-6d17338ce130"
 ];
 
-const uuidToIP = {};
+// Store active sessions { uuid: { ip, lastSeen } }
+const activeSessions = {};
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 mins
 
 app.get("/", (req, res) => {
   res.send("✅ UUID Validator Server is alive");
@@ -48,29 +50,35 @@ app.get("/", (req, res) => {
 
 app.post("/validate", (req, res) => {
   const uuid = req.body.uuid?.trim();
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
   if (!uuid) return res.status(400).json({ status: "fail", reason: "UUID missing" });
 
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-
   if (!isValidUUID || !allowedUUIDs.includes(uuid)) {
     return res.status(403).json({ status: "fail", reason: "UUID Invalid or Not Allowed" });
   }
 
-  if (!uuidToIP[uuid]) {
-    uuidToIP[uuid] = ip;
-    return res.json({ status: "ok", message: "✅ UUID validated and IP locked" });
+  const session = activeSessions[uuid];
+  const now = Date.now();
+
+  if (!session || now - session.lastSeen > SESSION_TIMEOUT_MS) {
+    // No active session or expired — allow this IP
+    activeSessions[uuid] = { ip, lastSeen: now };
+    return res.json({ status: "ok", message: "✅ UUID validated, new session started" });
   }
 
-  if (uuidToIP[uuid] !== ip) {
-    return res.status(403).json({ status: "fail", reason: "UUID already used by another IP" });
+  if (session.ip === ip) {
+    // Same IP — update lastSeen
+    activeSessions[uuid].lastSeen = now;
+    return res.json({ status: "ok", message: "✅ Continuing session from your IP" });
   }
 
-  return res.json({ status: "ok", message: "✅ UUID already validated by your IP" });
+  // Another IP trying to use same UUID while active session exists
+  return res.status(403).json({ status: "fail", reason: "UUID already active on another IP" });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 UUID Lock Server running on port ${PORT}`);
+  console.log(`🚀 UUID Validator running on port ${PORT}`);
 });
