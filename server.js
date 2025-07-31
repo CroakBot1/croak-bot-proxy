@@ -2,22 +2,30 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
 const cors = require("cors");
-const app = express();
 
+const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
 const allowedHashes = [
-  "9e9e7a3549c867473f573b4d6bafe2"
+  "9e9e7a3549c867473f573b4d6bafe2" // replace with your real hashes
 ];
 
-const ipToUUID = {};
-const uuidToIP = {};
-let lastPingedIP = null;
+const uuidToIP = {}; // Only locks 1 IP per UUID forever
 
+// ✅ Health check for Render
+app.get("/", (req, res) => {
+  res.send("✅ UUID Validator Server is alive");
+});
+
+// ✅ UUID lock handler
 app.post("/validate", (req, res) => {
   const uuid = req.body.uuid?.trim();
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  if (!uuid) {
+    return res.status(400).json({ status: "fail", reason: "UUID missing" });
+  }
 
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
   const hash = crypto.createHash("sha256").update(uuid + "super-secret").digest("hex");
@@ -26,23 +34,23 @@ app.post("/validate", (req, res) => {
     return res.status(403).json({ status: "fail", reason: "UUID Invalid or Not Allowed" });
   }
 
-  if (uuidToIP[uuid] && uuidToIP[uuid] !== ip) {
+  // ✅ Allow only first IP to claim it
+  if (!uuidToIP[uuid]) {
+    uuidToIP[uuid] = ip;
+    return res.json({ status: "ok", message: "✅ UUID validated and IP locked" });
+  }
+
+  // ❌ If already locked by someone else
+  if (uuidToIP[uuid] !== ip) {
     return res.status(403).json({ status: "fail", reason: "UUID already used by another IP" });
   }
 
-  if (ipToUUID[ip] && ipToUUID[ip] !== uuid) {
-    return res.status(403).json({ status: "fail", reason: "IP already linked to a different UUID" });
-  }
-
-  uuidToIP[uuid] = ip;
-  ipToUUID[ip] = uuid;
-  lastPingedIP = ip;
-
-  return res.json({ status: "ok", message: "✅ UUID validated and locked to IP" });
+  // ✅ If same user (same UUID + same IP) retries
+  return res.json({ status: "ok", message: "✅ UUID already validated by your IP" });
 });
 
-// ✅ PORT fix for Render
+// ✅ Render-compatible PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 UUID Lock Server running on port ${PORT}`);
 });
