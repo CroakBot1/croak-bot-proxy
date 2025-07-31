@@ -1,3 +1,6 @@
 git add package.json package-lock.json
 git commit -m "✅ Added cors module for Render backend"
 git push origin main
+git add package.json
+git commit -m "✅ Fix broken package.json (JSON parse error)"
+git push origin main
