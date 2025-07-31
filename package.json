@@ -1,19 +1,17 @@
 {
   "name": "uuid-validator-backend",
-  "version": "1.1.0",
-  "description": "A backend that locks UUIDs to the first IP and reverse-pings it via cron.",
+  "version": "1.2.0",
+  "description": "Backend to validate UUIDs and lock them to IPs without hashing.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": ["uuid", "ip-lock", "validator", "cron", "ping", "express"],
+  "keywords": ["uuid", "ip-lock", "validator", "express"],
   "author": "YourName",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "node-cron": "^3.0.3"
+    "express": "^4.18.2"
   }
 }
