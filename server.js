@@ -63,19 +63,20 @@ app.post("/validate", (req, res) => {
   const now = Date.now();
 
   if (!session || now - session.lastSeen > SESSION_TIMEOUT_MS) {
-    // No active session or expired — allow this IP
+    // No session or session expired — allow new IP
     activeSessions[uuid] = { ip, lastSeen: now };
-    return res.json({ status: "ok", message: "✅ UUID validated, new session started" });
+    return res.json({ status: "ok", message: "✅ UUID validated, session started" });
   }
 
-  if (session.ip === ip) {
-    // Same IP — update lastSeen
-    activeSessions[uuid].lastSeen = now;
-    return res.json({ status: "ok", message: "✅ Continuing session from your IP" });
+  if (session.ip !== ip) {
+    // Different IP — replace old session with new one
+    activeSessions[uuid] = { ip, lastSeen: now };
+    return res.json({ status: "ok", message: "⚠️ Session transferred to your IP" });
   }
 
-  // Another IP trying to use same UUID while active session exists
-  return res.status(403).json({ status: "fail", reason: "UUID already active on another IP" });
+  // Same IP — just update lastSeen
+  activeSessions[uuid].lastSeen = now;
+  return res.json({ status: "ok", message: "✅ Continuing session from your IP" });
 });
 
 const PORT = process.env.PORT || 3000;
