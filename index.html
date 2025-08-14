@@ -1,265 +1,331 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>📡 Multi-Pair Crypto Scanner — 1m TF</title>
+  <title>📡 Multi‑Pair 1m Scanner — 10k Preload + Smart Alerts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{--bg:#000;--card:#0b0b0b;--accent:#0f0;--muted:#666}
-    body{background:var(--bg);color:var(--accent);font-family:Inter,Roboto,monospace;margin:0;padding:18px}
-    h1{grid-column:span 3;margin:0 0 12px 0}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(15,255,0,0.08);padding:12px;border-radius:8px}
-    pre{background:#070707;padding:8px;border-radius:6px;overflow:auto;max-height:220px}
-    .title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .big{font-size:20px;font-weight:700}
-    .small{font-size:12px;color:var(--muted)}
-    .indicator{font-size:13px;line-height:1.4}
-    .alert{background:#122f12;color:lime;padding:6px;border-radius:6px;margin-top:8px}
-    button{background:transparent;border:1px solid rgba(15,255,0,0.12);color:var(--accent);padding:6px 8px;border-radius:6px;cursor:pointer}
-    #controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-    #log{height:140px;overflow:auto;background:#060606;padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,0.03)}
+    :root{
+      --bg:#000; --panel:#0b0b0b; --card:#111; --text:#d2ffd2; --accent:#00ffff; --line:#0f0;
+      --up:#34e06f; --dn:#ff5c5c; --warn:#ffd166; --muted:#9fe39f; --grid: 320px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #0f0a;position:sticky;top:0;background:linear-gradient(#000, #000c)}
+    header h1{font-size:18px;margin:0;color:#9ff}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .controls label{font-size:12px;color:#9fe39f}
+    .controls input, .controls select, .controls button{background:#0b0b0b;color:var(--text);border:1px solid #0f0;padding:8px 10px;border-radius:10px}
+    .controls button{cursor:pointer;transition:transform .08s ease}
+    .controls button:active{transform:scale(.98)}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--grid),1fr));gap:14px;padding:14px}
+    .card{background:var(--card);border:1px solid #0f0;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:240px}
+    .card h3{margin:0 0 4px 0;color:var(--accent);font-size:16px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .pill{display:inline-flex;gap:6px;align-items:center;font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #0f0;background:#0b0b0b}
+    .kline{font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:150px;overflow:auto;background:#0b0b0b;border:1px solid #0f0;border-radius:10px;padding:8px}
+
+    .score{font-size:28px;font-weight:700}
+    .score.up{color:var(--up)}
+    .score.dn{color:var(--dn)}
+    .score.neutral{color:var(--warn)}
+
+    .mini{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px}
+    .mini div{background:#0b0b0b;border:1px solid #0f0;border-radius:10px;padding:6px}
+
+    /* Popup Alerts */
+    .toast-wrap{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .toast{border:1px solid #0f0;background:#061;box-shadow:0 10px 30px #000a;border-radius:14px;padding:10px 12px;min-width:260px;max-width:340px}
+    .toast h4{margin:0 0 6px 0}
+    .toast small{opacity:.8}
+    .toast.good{background:#052;}
+    .toast.exit{background:#330; border-color:#f93}
+    .toast.hold{background:#013; border-color:#09f}
+
+    footer{padding:10px 14px;border-top:1px solid #0f0a;color:#8fb}
+    .legend{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+    .legend span{border:1px solid #0f0;padding:4px 6px;border-radius:999px;background:#0b0b0b}
   </style>
 </head>
 <body>
-  <h1>📡 Multi-Pair Crypto Scanner — 1m TF (Bybit) — Preload 10k candles / 1k chunks</h1>
-  <div id="controls">
-    <button id="startBtn">Start Preload & Connect</button>
-    <button id="stopBtn">Stop WS</button>
-    <div class="small">Audio alerts / Desktop Notifications will be used for alerts</div>
-  </div>
-  <div class="grid" id="cards"></div>
-  <h3 style="margin-top:12px;color:var(--muted)">Console</h3>
-  <div id="log"></div>
+  <header>
+    <h1>📡 Multi‑Pair 1m WebSocket + Smart Indicator Scanner</h1>
+    <div class="controls">
+      <label>Preload candles: <input id="preloadCount" type="number" value="10000" min="1000" step="1000" /></label>
+      <label>Chunk size: <input id="chunkSize" type="number" value="1000" min="500" step="500" /></label>
+      <button id="btnPreload">⏳ Preload All</button>
+      <button id="btnConnect">🔌 Connect Sockets</button>
+      <button id="btnMute">🔕 Mute</button>
+    </div>
+  </header>
 
-  <script>
-    // --- CONFIG ---
-    const SYMBOLS = [
-      {id:'ETH', symbol:'ETHUSDT'},
-      {id:'BTC', symbol:'BTCUSDT'},
-      {id:'SOL', symbol:'SOLUSDT'},
-      {id:'XRP', symbol:'XRPUSDT'},
-      {id:'BNB', symbol:'BNBUSDT'},
-      {id:'LTC', symbol:'LTCUSDT'},
-      {id:'DOGE', symbol:'DOGEUSDT'}
-    ];
-    const INTERVAL = '1'; // 1 minute
-    const PRELOAD_TOTAL = 10000; // per symbol
-    const CHUNK = 1000; // per request
-    const RATE_DELAY = 350; // ms between requests (rate-limit safety)
-    const WS_URL = 'wss://stream.bybit.com/v5/public/linear';
+  <div class="grid" id="grid"></div>
 
-    // --- State ---
-    const state = {};
-    let ws = null;
-    const logEl = document.getElementById('log');
+  <footer>
+    <div class="legend">
+      <span>Signals use: EMA/SMA, MACD, RSI, Stoch, BB, ATR, Donchian, VWAP, OBV, SAR, ADX, Pivots</span>
+      <span>Alerts fire only on new candle close to avoid spam</span>
+      <span>Linear market (Bybit)</span>
+    </div>
+  </footer>
 
-    function log(...args){
-      const t = new Date().toLocaleTimeString();
-      logEl.textContent = `[${t}] ` + args.join(' ') + '\n' + logEl.textContent;
-    }
+  <div class="toast-wrap" id="toasts"></div>
+  <audio id="beep"><source src="data:audio/wav;base64,UklGRkQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYBHG1hZGUgYnkgQ0hBVEdQVC4AAAABAQCA//////8AAP///wAA" type="audio/wav"></audio>
 
-    // --- Create UI cards ---
-    const cards = document.getElementById('cards');
-    for(const s of SYMBOLS){
-      const el = document.createElement('div'); el.className='card';
-      el.innerHTML = `
-        <div class="title"><div class="big">${s.id} / ${s.symbol}</div><div class="small" id="${s.symbol}-price">--</div></div>
-        <div class="indicator" id="${s.symbol}-ind">Loading indicators...</div>
-        <pre id="${s.symbol}-candles">Candle buffer: 0</pre>
-        <div id="${s.symbol}-alert"></div>
-      `;
-      cards.appendChild(el);
-      state[s.symbol] = {candles:[], lastCandleStart:null, el, alerted:false};
-    }
+<script>
+(() => {
+  const WSS = "wss://stream.bybit.com/v5/public/linear";
+  const REST = "https://api.bybit.com/v5/market/kline";
+  const SYMBOLS = [
+    "ETHUSDT","BTCUSDT","SOLUSDT","XRPUSDT","BNBUSDT","LTCUSDT","DOGEUSDT"
+  ];
 
-    // --- Indicator functions (shared) ---
-    function SMA(period, data){
-      if(data.length < period) return null;
-      const sum = data.slice(-period).reduce((a,b)=>a + b.close,0);
-      return sum/period;
-    }
-    function EMA(period, data){
-      if(data.length < period) return null;
-      const k = 2/(period+1);
-      let ema = data.slice(0,period).reduce((a,b)=>a + b.close,0)/period;
-      for(let i=period;i<data.length;i++){ ema = data[i].close*k + ema*(1-k); }
-      return ema;
-    }
-    function EMAArray(period,data){
-      if(data.length < period) return null;
-      const k=2/(period+1);
-      let res=[]; let ema = data.slice(0,period).reduce((a,b)=>a + b.close,0)/period; res.push(ema);
-      for(let i=period;i<data.length;i++){ ema = data[i].close*k + ema*(1-k); res.push(ema); }
-      return res;
-    }
-    function RSI(period,data){
-      if(data.length < period+1) return null;
-      let gains=0, losses=0;
-      for(let i=data.length-period;i<data.length;i++){ const diff = data[i].close - data[i-1].close; if(diff>=0) gains+=diff; else losses -= diff; }
-      const avgG = gains/period; const avgL = losses/period; if(avgL===0) return 100; const rs = avgG/avgL; return 100 - 100/(1+rs);
-    }
-    function MACD(data){
-      const e12 = EMAArray(12,data); const e26 = EMAArray(26,data);
-      if(!e12||!e26) return [null,null,null];
-      const min = Math.min(e12.length,e26.length); const macdLine = e12.slice(-min).map((v,i)=>v - e26.slice(-min)[i]);
-      // signal
-      const signal = (()=>{ if(macdLine.length < 9) return null; let k = 2/(9+1); let s = macdLine.slice(0,9).reduce((a,b)=>a+b,0)/9; for(let i=9;i<macdLine.length;i++){ s = macdLine[i]*k + s*(1-k);} return s; })();
-      const hist = (macdLine.length && signal!==null) ? (macdLine[macdLine.length-1] - signal) : null;
-      return [macdLine[macdLine.length-1]||null, signal, hist];
-    }
-    function Bollinger(period,data){ if(data.length<period) return [null,null]; const slice=data.slice(-period); const mean=slice.reduce((a,b)=>a+b.close,0)/period; const variance=slice.reduce((a,b)=>a+Math.pow(b.close-mean,2),0)/period; const sd=Math.sqrt(variance); return [mean+2*sd, mean-2*sd]; }
-    function ATR(period,data){ if(data.length < period+1) return null; const trs=[]; for(let i=1;i<data.length;i++){ const high=data[i].high, low=data[i].low, prev=data[i-1].close; trs.push(Math.max(high-low, Math.abs(high-prev), Math.abs(low-prev))); } return trs.slice(-period).reduce((a,b)=>a+b,0)/period; }
-    function Donchian(period,data){ if(data.length<period) return [null,null]; const s=data.slice(-period); return [Math.max(...s.map(x=>x.high)), Math.min(...s.map(x=>x.low))]; }
-    function VWAP(data){ if(!data.length) return null; let tpv=0, vol=0; for(const k of data){ const tp = (k.high+k.low+k.close)/3; tpv += tp*k.volume; vol += k.volume; } return tpv/vol; }
-    function OBV(data){ if(data.length<2) return 0; let obv=0; for(let i=1;i<data.length;i++){ if(data[i].close>data[i-1].close) obv += data[i].volume; else if(data[i].close<data[i-1].close) obv -= data[i].volume; } return obv; }
-    function Stochastic(period,data){ if(data.length < period) return [null,null]; const slice=data.slice(-period); const high=Math.max(...slice.map(d=>d.high)); const low=Math.min(...slice.map(d=>d.low)); const close=data[data.length-1].close; const k = (close-low)/(high-low)*100; return [k, null]; }
+  const state = {}; // per symbol
+  const sockets = new Map();
+  let muted = false;
 
-    // --- Alert rules (simple combined rule) ---
-    // Good long entry when: EMA14 > SMA14 AND MACD histogram > 0 AND RSI between 25-45 AND price near lower Bollinger band or Donchian low
-    // Good exit when: MACD histo turns negative OR RSI > 70 OR price hits upper Bollinger band or Donchian high
-    function evaluateSignals(sym){
-      const st = state[sym]; const d = st.candles; if(d.length < 35) return null;
-      const sma14 = SMA(14,d); const ema14 = EMA(14,d); const [macd, signal, hist] = MACD(d); const rsi = RSI(14,d); const [bbU,bbL] = Bollinger(20,d); const [dcH,dcL] = Donchian(20,d);
-      const last = d[d.length-1].close;
-      const entry = (ema14 && sma14 && ema14 > sma14) && (hist && hist > 0) && (rsi && rsi >= 25 && rsi <=45) && (bbL && last <= bbL*1.005 || (dcL && last <= dcL*1.003));
-      const exit = (hist && hist < 0) || (rsi && rsi > 70) || (bbU && last >= bbU*0.997) || (dcH && last >= dcH*0.997);
-      return {entry, exit, last, sma14, ema14, hist, rsi, bbU, bbL, dcH, dcL};
-    }
+  const grid = document.getElementById('grid');
+  const toasts = document.getElementById('toasts');
+  const beep = document.getElementById('beep');
 
-    // --- UI update per symbol ---
-    function updateUI(sym){
-      const st = state[sym]; const elInd = document.getElementById(sym+'-ind'); const pre = document.getElementById(sym+'-candles'); const priceEl = document.getElementById(sym+'-price'); const alertEl = document.getElementById(sym+'-alert');
-      const d = st.candles; priceEl.textContent = d.length? d[d.length-1].close : '--';
-      pre.textContent = `Candle buffer: ${d.length}`;
-      if(d.length<10){ elInd.textContent = '⏳ waiting for candles...'; return; }
-      const sig = evaluateSignals(sym);
-      elInd.innerHTML = `Price: ${sig.last.toFixed(6)}\nEMA14: ${sig.ema14?sig.ema14.toFixed(6):'--'}\nSMA14: ${sig.sma14?sig.sma14.toFixed(6):'--'}\nMACD hist: ${sig.hist?sig.hist.toFixed(6):'--'}\nRSI14: ${sig.rsi?sig.rsi.toFixed(2):'--'}\nBB Upper/Lower: ${sig.bbU?sig.bbU.toFixed(6):'--'} / ${sig.bbL?sig.bbL.toFixed(6):'--'}\nDonchian H/L: ${sig.dcH?sig.dcH.toFixed(6):'--'} / ${sig.dcL?sig.dcL.toFixed(6):'--'}`;
-      // Alerts
-      if(sig.entry && !st.alerted){
-        st.alerted = true;
-        showAlert(sym, 'GOOD LONG ENTRY', sig.last);
-        alertEl.innerHTML = `<div class="alert">🔔 GOOD LONG ENTRY @ ${sig.last.toFixed(6)}</div>`;
-      } else if(sig.exit){
-        st.alerted = false;
-        showAlert(sym, 'GOOD EXIT', sig.last);
-        alertEl.innerHTML = `<div class="alert">⚠️ GOOD EXIT @ ${sig.last.toFixed(6)}</div>`;
+  // Build UI cards
+  for (const sym of SYMBOLS){
+    state[sym] = {
+      candles:[], lastClose:null, lastStart:null, count:0,
+      indicators:{}, score:0, lastSignal:null
+    };
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.id = `card-${sym}`;
+    el.innerHTML = `
+      <div class="row" style="align-items:center">
+        <h3>${sym} — 1m</h3>
+        <div style="text-align:right"><span class="pill" id="pill-${sym}">⏳ Waiting...</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="mini" id="mini-${sym}">
+            <div>EMA14: <b id="ema14-${sym}">⏳</b></div>
+            <div>SMA14: <b id="sma14-${sym}">⏳</b></div>
+            <div>MACD: <b id="macd-${sym}">⏳</b></div>
+            <div>RSI14: <b id="rsi-${sym}">⏳</b></div>
+            <div>Stoch %K: <b id="stochk-${sym}">⏳</b></div>
+            <div>BB U/L: <b id="bb-${sym}">⏳</b></div>
+            <div>VWAP: <b id="vwap-${sym}">⏳</b></div>
+            <div>ADX: <b id="adx-${sym}">⏳</b></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center">
+          <div class="score neutral" id="score-${sym}">0</div>
+          <div class="pill" id="sig-${sym}">Signal: ⏳</div>
+        </div>
+      </div>
+      <div class="kline" id="log-${sym}">Connecting...</div>
+    `;
+    grid.appendChild(el);
+  }
+
+  // Utils
+  const fmt = (n, d=2) => (n==null || isNaN(n))? null : Number(n).toFixed(d);
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+
+  function toast(type, title, msg){
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    const ts = new Date().toLocaleTimeString();
+    t.innerHTML = `<h4>${title}</h4><div>${msg}</div><small>${ts}</small>`;
+    toasts.prepend(t);
+    if (!muted) { try{beep.currentTime=0;beep.play();}catch(e){} }
+    setTimeout(()=> t.remove(), 8000);
+  }
+
+  // Indicators
+  function SMA(period, data){ if(data.length<period) return null; return avg(data.slice(-period).map(d=>d.close)); }
+  function EMA(period, data){ if(data.length<period) return null; const k=2/(period+1); let e = avg(data.slice(0,period).map(d=>d.close)); for(let i=period;i<data.length;i++){ e = data[i].close*k + e*(1-k);} return e; }
+  function EMAArray(period, data){ if(data.length<period) return null; const k=2/(period+1); let e=avg(data.slice(0,period).map(d=>d.close)); const out=[e]; for(let i=period;i<data.length;i++){ e=data[i].close*k+e*(1-k); out.push(e);} return out; }
+  function EMAFromArray(period, arr){ if(!arr || arr.length<period) return null; const k=2/(period+1); let e = avg(arr.slice(0,period)); const out=[e]; for(let i=period;i<arr.length;i++){ e = arr[i]*k + e*(1-k); out.push(e);} return out; }
+  function MACD(data){ const e12=EMAArray(12,data), e26=EMAArray(26,data); if(!e12||!e26) return [null,null,null]; const m = e12.slice(-e26.length).map((v,i)=>v - e26[i]); const s = EMAFromArray(9,m); if(!s) return [null,null,null]; const i=m.length-1; return [m[i], s[i], m[i]-s[i]]; }
+  function RSI(period, data){ if(data.length<period+1) return null; let gains=0, losses=0; for(let i=data.length-period;i<data.length;i++){ const diff=data[i].close - data[i-1].close; if(diff>=0) gains+=diff; else losses-=diff; } const ag=gains/period, al=losses/period; if(al===0) return 100; const rs=ag/al; return 100 - 100/(1+rs); }
+  function BB(period, data){ if(data.length<period) return [null,null,null]; const slice=data.slice(-period); const m=avg(slice.map(d=>d.close)); const v=avg(slice.map(d=>Math.pow(d.close-m,2))); const sd=Math.sqrt(v); return [m+2*sd, m, m-2*sd]; }
+  function ATR(period, data){ if(data.length<period+1) return null; const trs=[]; for(let i=1;i<data.length;i++){ const h=data[i].high,l=data[i].low,pc=data[i-1].close; trs.push(Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc))); } return avg(trs.slice(-period)); }
+  function Donch(period, data){ if(data.length<period) return [null,null]; const s=data.slice(-period); return [Math.max(...s.map(d=>d.high)), Math.min(...s.map(d=>d.low))]; }
+  function VWAP(data){ let tpv=0, vol=0; for(const k of data){ const tp=(k.high+k.low+k.close)/3; tpv += tp*k.volume; vol += k.volume; } return tpv/vol; }
+  function OBV(data){ if(data.length<2) return 0; let obv=0; for(let i=1;i<data.length;i++){ if(data[i].close>data[i-1].close) obv+=data[i].volume; else if(data[i].close<data[i-1].close) obv-=data[i].volume; } return obv; }
+  function Pivots(c){ const p=(c.high+c.low+c.close)/3; const s1=2*p - c.high; const r1=2*p - c.low; return [p,s1,r1]; }
+  function PSAR(data, step=.02, max=.2){ if(data.length<2) return null; let up=true; let sar=data[data.length-2].low; let ep=data[data.length-2].high; let af=step; for(let i=data.length-2;i<data.length;i++){ if(up){ sar += af*(ep-sar); if(data[i].low < sar){ up=false; sar=ep; ep=data[i].low; af=step;} else if(data[i].high>ep){ ep=data[i].high; af=Math.min(af+step,max);} } else { sar += af*(ep-sar); if(data[i].high > sar){ up=true; sar=ep; ep=data[i].high; af=step;} else if(data[i].low<ep){ ep=data[i].low; af=Math.min(af+step,max);} } } return sar; }
+  function ADX(period, data){ if(data.length<period+1) return null; const plus=[], minus=[], trs=[]; for(let i=1;i<data.length;i++){ const up=data[i].high - data[i-1].high; const dn=data[i-1].low - data[i].low; plus.push(up>dn && up>0? up:0); minus.push(dn>up && dn>0? dn:0); trs.push(Math.max(data[i].high-data[i].low, Math.abs(data[i].high-data[i-1].close), Math.abs(data[i].low-data[i-1].close))); } const atr=avg(trs.slice(-period)); const p=100*(avg(plus.slice(-period))/atr); const m=100*(avg(minus.slice(-period))/atr); const dx=100*Math.abs(p-m)/(p+m); return dx; }
+  function Stoch(period, data){ if(data.length<period) return [null,null]; const s=data.slice(-period); const h=Math.max(...s.map(d=>d.high)); const l=Math.min(...s.map(d=>d.low)); const c=data[data.length-1].close; const k=((c-l)/(h-l))*100; // simple D 3‑period SMA of K
+    const prevK = data.__k || []; prevK.push(k); if(prevK.length>3) prevK.shift(); data.__k = prevK; const d = prevK.length===3? avg(prevK): null; return [k,d]; }
+
+  function computeIndicators(sym){
+    const S = state[sym]; const D = S.candles; if(D.length<35) return; // need some data
+    const ema14 = EMA(14,D), sma14 = SMA(14,D);
+    const [macd, signal, histo] = MACD(D);
+    const rsi = RSI(14,D);
+    const [bbu, bbm, bbl] = BB(20,D);
+    const atr = ATR(14,D);
+    const [dch, dcl] = Donch(20,D);
+    const vwap = VWAP(D);
+    const obv = OBV(D);
+    const [pivot,s1,r1] = Pivots(D[D.length-1]);
+    const psar = PSAR(D);
+    const adx = ADX(14,D);
+    const [k,d] = Stoch(14,D);
+
+    S.indicators = {ema14,sma14,macd,signal,histo,rsi,bbu,bbm,bbl,atr,dch,dcl,vwap,obv,pivot,s1,r1,psar,adx,k,d};
+    renderIndicators(sym);
+    scoreAndSignal(sym);
+  }
+
+  function renderIndicators(sym){
+    const id = q=>document.getElementById(`${q}-${sym}`);
+    const I = state[sym].indicators; if(!I) return;
+    id('ema14').textContent = fmt(I.ema14);
+    id('sma14').textContent = fmt(I.sma14);
+    id('macd').textContent = [fmt(I.macd,4),fmt(I.signal,4),fmt(I.histo,4)].join(' / ');
+    id('rsi').textContent = fmt(I.rsi);
+    id('stochk').textContent = [fmt(I.k), fmt(I.d)].join(' / ');
+    id('bb').textContent = `${fmt(I.bbu)} | ${fmt(I.bbl)}`;
+    id('vwap').textContent = fmt(I.vwap);
+    id('adx').textContent = fmt(I.adx);
+  }
+
+  function scoreAndSignal(sym){
+    const S = state[sym]; const D=S.candles; const I=S.indicators; if(!I) return; const c=D[D.length-1].close;
+    let score = 0; // ensemble signal
+    if(I.ema14 && I.sma14) score += I.ema14 > I.sma14 ? 1 : -1; // trend
+    if(I.histo!=null && I.histo>0) score += 1; else if(I.histo!=null) score -= 1; // momentum
+    if(I.rsi!=null){ if(I.rsi<32) score += 1; if(I.rsi>70) score -= 1; }
+    if(I.k!=null && I.d!=null){ if(I.k>I.d && I.k<60) score += 1; if(I.k<I.d && I.k>40) score -= 1; }
+    if(I.adx!=null && I.adx>20) score += 0.5; // trend strength
+    if(I.vwap!=null){ if(c>I.vwap) score += 0.5; else score -= 0.5; }
+    if(I.bbu && I.bbl){ if(c <= I.bbl*1.005) score += 1; if(c >= I.bbu*0.995) score -= 1; }
+
+    S.score = Number(score.toFixed(2));
+    const scoreEl = document.getElementById(`score-${sym}`);
+    scoreEl.textContent = S.score;
+    scoreEl.className = 'score ' + (S.score>0.5? 'up' : S.score<-0.5? 'dn':'neutral');
+
+    let tag = 'HOLD', tclass='hold';
+    if(S.score>=3) { tag = 'GOOD LONG ENTRY'; tclass='good'; }
+    else if(S.score<=-2 || (I.rsi && I.rsi>72)) { tag='GOOD EXIT'; tclass='exit'; }
+
+    const pill = document.getElementById(`sig-${sym}`);
+    pill.textContent = `Signal: ${tag}`;
+
+    // Fire popup only on candle close and when changed
+    if(S.lastSignal !== tag && S._justClosed){
+      toast(tclass, `${sym} — ${tag}`, `Price: ${fmt(c)} | Score ${S.score}`);
+      S.lastSignal = tag;
+    }
+  }
+
+  function log(sym, k, isNew){
+    const el = document.getElementById(`log-${sym}`);
+    const ts = new Date(k.start*1000).toLocaleTimeString();
+    const delta = state[sym].lastClose!=null? (k.close - state[sym].lastClose).toFixed(4): 'N/A';
+    const head = isNew? '🟢 NEW' : '⚡ LIVE';
+    el.textContent = `${head}  ${ts}\nO:${k.open}  H:${k.high}  L:${k.low}  C:${k.close} (Δ ${delta})  V:${k.volume}\n\n` + el.textContent;
+  }
+
+  async function preloadSymbol(sym, total, chunk){
+    const S = state[sym];
+    const params = new URLSearchParams({category:'linear', symbol:sym, interval:'1', limit:String(chunk)});
+    let fetched = 0;
+    let start = Math.floor(Date.now()/1000) - total*60; // go back in time
+    const out = [];
+    while(fetched < total){
+      params.set('start', String(start*1000));
+      const url = `${REST}?${params.toString()}`;
+      try{
+        const res = await fetch(url);
+        const j = await res.json();
+        if(j.retCode!==0 || !j.result?.list || j.result.list.length===0) break;
+        const batch = j.result.list.map(c=>({
+          start: Math.floor(c[0]/1000),
+          open: +c[1], high:+c[2], low:+c[3], close:+c[4], volume:+c[5]
+        }));
+        out.push(...batch);
+        fetched += batch.length;
+        start = Math.floor(batch[batch.length-1].start) + 60; // move forward
+        document.getElementById(`pill-${sym}`).textContent = `Preloaded ${fetched}/${total}`;
+        await new Promise(r=>setTimeout(r, 250));
+      }catch(e){
+        document.getElementById(`pill-${sym}`).textContent = `Error preload: ${e.message}`;
+        break;
       }
     }
+    // keep last 300 for indicator stability
+    S.candles = out.slice(-300);
+    S.count = out.length;
+    S.lastClose = S.candles.length? S.candles[S.candles.length-1].close : null;
+    S.lastStart = S.candles.length? S.candles[S.candles.length-1].start : null;
+    document.getElementById(`pill-${sym}`).textContent = `Ready • ${out.length} loaded`;
+    computeIndicators(sym);
+  }
 
-    // --- Visual + desktop + audio alerts ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function beep(){ try{ const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.03; o.start(); setTimeout(()=>{ o.stop(); },120); }catch(e){} }
-    function showAlert(sym, type, price){
-      log(`${sym} ALERT: ${type} @ ${price}`);
-      // Desktop notification
-      if(Notification.permission === 'granted'){
-        const n = new Notification(`${sym} — ${type}`, {body:`Price: ${price}`, tag: sym + '-' + type});
-      }
-      beep();
-      // flash card
-      const card = state[sym].el; card.style.boxShadow = '0 0 18px rgba(0,255,0,0.12)'; setTimeout(()=>{ card.style.boxShadow='none'; },2200);
-    }
-
-    // --- Preload candles per symbol (10000 in 1000 chunks) ---
-    async function fetchKlines(symbol, limit=CHUNK, start=null){
-      const url = new URL('https://api.bybit.com/v5/market/kline');
-      url.searchParams.set('category','linear');
-      url.searchParams.set('symbol', symbol);
-      url.searchParams.set('interval', INTERVAL);
-      url.searchParams.set('limit', limit);
-      if(start) url.searchParams.set('start', start);
-      const res = await fetch(url.toString());
-      return res.json();
-    }
-
-    async function preloadForSymbol(symbol){
-      const st = state[symbol]; st.candles = [];
-      log('Preloading', symbol, `=> ${PRELOAD_TOTAL} candles in ${CHUNK}-chunk`);
-      // strategy: request latest by moving start timestamp backward. Bybit v5 expects start in ms; we'll page by oldest timestamp from last batch.
-      let fetched = 0;
-      // get newest batch first by using no start (Bybit returns latest)
-      let cursorStart = null;
-      while(fetched < PRELOAD_TOTAL){
-        try{
-          const json = await fetchKlines(symbol, CHUNK, cursorStart);
-          if(json.retCode !== 0 || !json.result?.list?.length) {
-            log('No more data or error for', symbol, json.retMsg||json);
-            break;
-          }
-          // json.result.list is array of [ts, open, high, low, close, volume]
-          const batch = json.result.list.map(c => ({
-            start: Math.floor(c[0]/1000),
-            open: Number(c[1]), high: Number(c[2]), low: Number(c[3]), close: Number(c[4]), volume: Number(c[5])
-          }));
-          // Prepend older -> we want oldest first in candles
-          st.candles = [...batch.reverse(), ...st.candles];
-          fetched += batch.length;
-          log(symbol, 'fetched', fetched);
-          // Prepare cursor: use the oldest timestamp of this batch minus 1000ms to fetch earlier data next
-          cursorStart = Math.floor(batch[0].start * 1000) - 60000; // bybit start in ms
-          await new Promise(r=>setTimeout(r, RATE_DELAY));
-        }catch(err){ log('Fetch error', symbol, err.message); break; }
-      }
-      // trim to latest PRELOAD_TOTAL
-      if(st.candles.length > PRELOAD_TOTAL) st.candles = st.candles.slice(-PRELOAD_TOTAL);
-      log('Done preload', symbol, 'candles:', st.candles.length);
-      // keep only last 2000 for memory safety; indicators use last 150+ but we keep more
-      if(st.candles.length > 2000) st.candles = st.candles.slice(-2000);
-      updateUI(symbol);
-    }
-
-    // --- WebSocket connection for live updates ---
-    function connectWS(){
-      if(ws) try{ ws.close(); }catch(e){}
-      ws = new WebSocket(WS_URL);
-      ws.onopen = ()=>{
-        log('WS open — subscribing to kline.1 for all symbols');
-        const args = SYMBOLS.map(s => `kline.1.${s.symbol}`);
-        ws.send(JSON.stringify({op:'subscribe', args}));
+  function connect(){
+    const sock = new WebSocket(WSS);
+    sock.onopen = ()=>{
+      const args = SYMBOLS.map(s=>`kline.1.${s}`);
+      sock.send(JSON.stringify({op:'subscribe', args}));
+      toast('hold','WebSocket','Connected and subscribed to 7 symbols');
+    };
+    sock.onmessage = (ev)=>{
+      const msg = JSON.parse(ev.data);
+      if(!msg.topic || !msg.data) return;
+      const m = msg.topic.match(/kline\.1\.(\w+)/);
+      if(!m) return; const sym = m[1];
+      const raw = Array.isArray(msg.data)? msg.data[0]: msg.data;
+      const k = {
+        start: Number(raw.start),
+        open: Number(raw.open),
+        high: Number(raw.high),
+        low: Number(raw.low),
+        close: Number(raw.close),
+        volume: Number(raw.volume)
       };
-      ws.onmessage = (ev)=>{
-        try{
-          const msg = JSON.parse(ev.data);
-          if(msg.topic && msg.data){
-            const topic = msg.topic; // e.g. kline.1.ETHUSDT
-            const parts = topic.split('.');
-            const sym = parts[2];
-            if(!state[sym]) return;
-            const raw = Array.isArray(msg.data)? msg.data[0] : msg.data;
-            const k = { start: Number(raw.start), open: Number(raw.open), high: Number(raw.high), low: Number(raw.low), close: Number(raw.close), volume: Number(raw.volume) };
-            const st = state[sym];
-            const isNew = k.start !== st.lastCandleStart;
-            st.lastCandleStart = k.start;
-            if(isNew){ st.candles.push(k); if(st.candles.length>2000) st.candles.shift(); }
-            else { // live update on last candle
-              if(st.candles.length) st.candles[st.candles.length-1] = k; else st.candles.push(k);
-            }
-            updateUI(sym);
-          }
-        }catch(e){ console.warn('WS parse error', e); }
-      };
-      ws.onerror = (e)=>{ log('WS error', e.message || e); };
-      ws.onclose = ()=>{ log('WS closed'); };
-    }
+      const S = state[sym]; if(!S) return;
+      const isNew = k.start !== S.lastStart;
+      if(isNew){
+        S._justClosed = true; // flag for alert
+        S.count++; S.lastClose = k.close; S.lastStart = k.start; S.candles.push(k); if(S.candles.length>300) S.candles.shift();
+        computeIndicators(sym);
+      }else{
+        // update last candle live
+        if(S.candles.length){ Object.assign(S.candles[S.candles.length-1], k); S._justClosed=false; computeIndicators(sym); }
+      }
+      log(sym,k,isNew);
+    };
+    sock.onerror = ()=> toast('exit','WebSocket','Error');
+    sock.onclose = ()=> toast('exit','WebSocket','Closed');
+    sockets.set('main', sock);
+  }
 
-    // --- Controls ---
-    document.getElementById('startBtn').addEventListener('click', async ()=>{
-      if(Notification.permission !== 'granted') try{ await Notification.requestPermission(); }catch(e){}
-      log('Starting preload for all symbols...');
-      // Preload sequentially to be gentle with API
-      for(const s of SYMBOLS){ await preloadForSymbol(s.symbol); }
-      log('All preloads finished. Connecting websocket...');
-      connectWS();
-    });
-    document.getElementById('stopBtn').addEventListener('click', ()=>{ if(ws) ws.close(); log('WS stop requested'); });
+  // Controls
+  document.getElementById('btnPreload').addEventListener('click', async ()=>{
+    const total = Math.max(1000, Number(document.getElementById('preloadCount').value)||10000);
+    const chunk = Math.max(500, Number(document.getElementById('chunkSize').value)||1000);
+    for(const s of SYMBOLS){ await preloadSymbol(s,total,chunk); }
+    toast('good','Preload Complete', `${SYMBOLS.length} symbols • up to ${total} candles each (in ${chunk}s)`);
+  });
+  document.getElementById('btnConnect').addEventListener('click', ()=>{
+    if(!sockets.has('main')) connect();
+  });
+  document.getElementById('btnMute').addEventListener('click', (e)=>{
+    muted = !muted; e.target.textContent = muted? '🔕 Muted' : '🔔 Sound On';
+  });
 
-    // --- Periodic UI refresh for indicators (in case we have candles from preload) ---
-    setInterval(()=>{
-      for(const s of SYMBOLS){ if(state[s.symbol].candles.length) updateUI(s.symbol); }
-    }, 1500);
-
-  </script>
+  // Auto start with a light preload (10k by default)
+  (async()=>{
+    const total = Number(document.getElementById('preloadCount').value);
+    const chunk = Number(document.getElementById('chunkSize').value);
+    for(const s of SYMBOLS){ await preloadSymbol(s,total,chunk); }
+    connect();
+  })();
+})();
+</script>
 </body>
 </html>
