@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>📡 50 Pairs 1m — 10,000 Historical + Live WebSocket + Indicators + Buy Alerts</title>
+  <title>📡 50 Pairs 1m — 100,000 Historical + Live WebSocket + Indicators + Buy Alerts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -68,11 +68,11 @@ const SYMBOLS = [
 ];
 const INTERVAL = '1m';
 const REST_LIMIT = 1000; // Binance max per request
-const PRELOAD = 10_000;  // per pair
+const PRELOAD = 100_000;  // per pair
 const STORE_ALL = false; // cap memory to last 12k for safety
 const MAX_STORE = 12_000;
 const VISIBLE = 300;
-const FETCH_DELAY_MS = 60; // gentle throttle between batches per pair
+const FETCH_DELAY_MS = 10; // gentle throttle between batches per pair
 const DRAW_EVERY = 200;    // redraw cadence during preload
 
 /** ==============================
@@ -382,3 +382,4 @@ function drawSpark(sym){
 </script>
 </body>
 </html>
+
