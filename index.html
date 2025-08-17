@@ -33,7 +33,7 @@
   </style>
 </head>
 <body>
-  <h2>📡 50 Pairs 1m — 10,000 Historical + Live + Buy Alerts</h2>
+  <h2>📡 50 Pairs 1m — 50,000 Historical + Live + Buy Alerts</h2>
   <div class="bar">
     <div class="pill" id="status">Status: starting…</div>
     <div class="pill" id="progress">Fetched: 0 / 500,000</div>
@@ -71,7 +71,7 @@ const REST_LIMIT = 1000; // Binance max per request
 const PRELOAD = 50_000;  // per pair
 const STORE_ALL = false; // cap memory to last 12k for safety
 const MAX_STORE = 12_000;
-const VISIBLE = 300;
+const VISIBLE = 3000;
 const FETCH_DELAY_MS = 30; // gentle throttle between batches per pair
 const DRAW_EVERY = 200;    // redraw cadence during preload
 
