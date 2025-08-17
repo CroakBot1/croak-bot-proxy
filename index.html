@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>📡 50 Pairs 1m — 50,000 Historical + Live WebSocket + Indicators + Buy Alerts</title>
+  <title>📡 50 Pairs 1m — 1,000,000 Historical + Live WebSocket + Indicators + Buy Alerts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -33,7 +33,7 @@
   </style>
 </head>
 <body>
-  <h2>📡 50 Pairs 1m — 50,000 Historical + Live + Buy Alerts</h2>
+  <h2>📡 50 Pairs 1m — 1,000,000 Historical + Live + Buy Alerts</h2>
   <div class="bar">
     <div class="pill" id="status">Status: starting…</div>
     <div class="pill" id="progress">Fetched: 0 / 500,000</div>
@@ -68,7 +68,7 @@ const SYMBOLS = [
 ];
 const INTERVAL = '1m';
 const REST_LIMIT = 1000; // Binance max per request
-const PRELOAD = 50_000;  // per pair
+const PRELOAD = 500_000;  // per pair
 const STORE_ALL = false; // cap memory to last 12k for safety
 const MAX_STORE = 12_000;
 const VISIBLE = 500000;
