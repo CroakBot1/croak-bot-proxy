@@ -1,384 +1,396 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>📡 50 Pairs 1m — 50,000 Historical + Live WebSocket + Indicators + Buy Alerts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🪄 MTF Crypto — Binance Manual Preload + Live WebSocket + Native Buy Alerts (Scored)</title>
   <style>
     :root{
-      --bg:#000; --card:#0b0b0b; --grid:#141414; --txt:#c8facc; --muted:#98f598; --accent:#00ffff; --bad:#ff4d4d; --good:#00ff84; --border:#1aff1a;
+      --bg:#07080a;--panel:#0c0f12;--card:#12161b;--text:#d5f2e3;--muted:#89a39a;--accent:#00ffa3;--warn:#ffd166;--bad:#ff4d4f;--good:#00e676;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;padding:14px;display:grid;gap:14px;grid-template-columns: 1.4fr 1fr}
-    h2{grid-column:1/-1;margin:0 0 6px}
-    .bar{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
-    .tiny{font-size:12px;opacity:.9}
-    button{background:#000;color:var(--txt);border:1px solid var(--border);padding:6px 10px;border-radius:8px;cursor:pointer}
-    button:hover{filter:brightness(1.15)}
-    #chartWrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;position:relative;min-height:420px}
-    #chart{width:100%;height:420px;display:block;background:#000}
-    #output,#panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;max-height:460px;overflow:auto;white-space:pre-wrap;word-break:break-word}
-    #panel h3{color:var(--accent);margin:10px 0 6px}
-    .row{display:flex;gap:10px;align-items:center}
-    .green{color:var(--good)} .red{color:var(--bad)} .muted{color:var(--muted)}
-    .grid{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:460px;overflow:auto}
-    .tile{border:1px solid #0f0;border-radius:10px;padding:6px;background:#020202;cursor:pointer}
-    .tile h4{margin:0 0 4px;font-size:12px;color:#9ff59f}
-    .spark{width:100%;height:36px;background:#000;border-radius:6px}
-    .badg{display:inline-block;padding:2px 6px;border:1px solid var(--border);border-radius:999px;margin-top:4px;font-size:11px}
-    .buy{background:#001a00;color:#00ff84}
-    .warn{background:#1a0000;color:#ff4d4d;border-color:#ff4d4d}
-    select{background:#000;color:var(--txt);border:1px solid var(--border);border-radius:8px;padding:6px}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    header{padding:14px 16px;border-bottom:1px solid #1b222b;background:linear-gradient(180deg,#0b0e12,transparent)}
+    h1{margin:0;font-size:18px;letter-spacing:.5px}
+    .wrap{display:grid;grid-template-columns:310px 1fr;gap:14px;padding:14px}
+    .card{background:var(--card);border:1px solid #1a222b;border-radius:14px;box-shadow:0 10px 30px rgb(0 0 0 / .25)}
+    .panel{padding:14px}
+    label{font-size:12px;color:var(--muted)}
+    input,select,button{background:#0b1016;color:var(--text);border:1px solid #22303c;border-radius:10px;padding:8px 10px;font-family:inherit}
+    button{cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#093,#062);border-color:#094;box-shadow:inset 0 0 0 1px #0b6}
+    button.red{background:linear-gradient(180deg,#742,#521);border-color:#a42}
+    button.ghost{background:transparent}
+    .row{display:flex;gap:8px;align-items:center;margin:6px 0}
+    .grid{display:grid;gap:8px}
+    .grid.cols2{grid-template-columns:1fr 1fr}
+    .grid.cols3{grid-template-columns:1fr 1fr 1fr}
+    .kps{display:flex;gap:6px;flex-wrap:wrap}
+    .badge{padding:2px 8px;border:1px solid #22303c;border-radius:999px;font-size:11px;color:var(--muted)}
+    #log{height:220px;overflow:auto;white-space:pre-wrap;background:#0b0f14;border-top:1px dashed #233}
+    #output{height:360px;overflow:auto;white-space:pre-wrap}
+    .indibox{padding:10px;border-top:1px dashed #22303c;font-size:12px;line-height:1.45}
+    .title{color:#a8fbea;font-weight:700}
+    .ok{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+    .hl{color:var(--accent)}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #20313a;border-radius:999px;padding:3px 8px;font-size:12px}
+    .muted{color:var(--muted)}
+    .switch{display:inline-flex;align-items:center;gap:10px}
+    .switch input{accent-color:#0f9}
+    .table{font-size:12px;width:100%;border-collapse:collapse}
+    .table td,.table th{border-bottom:1px dashed #233;padding:6px 8px;text-align:left}
+    .table th{color:#9fd;position:sticky;top:0;background:#0b0f14}
+    .small{font-size:11px}
+    .foot{padding:10px;color:#7fa;opacity:.7}
+    .bar{height:6px;background:#0a1216;border:1px solid #20313a;border-radius:999px;overflow:hidden}
+    .bar > i{display:block;height:100%;background:linear-gradient(90deg,#0a4,#0c6);width:0%}
   </style>
 </head>
 <body>
-  <h2>📡 50 Pairs 1m — 50,000 Historical + Live + Buy Alerts</h2>
-  <div class="bar">
-    <div class="pill" id="status">Status: starting…</div>
-    <div class="pill" id="progress">Fetched: 0 / 500,000</div>
-    <div class="pill" id="live">Live: disconnected</div>
-    <div class="pill">Visible: <span id="visN">300</span> bars</div>
-    <div class="pill tiny">Tip: Mobile may struggle keeping 50 sockets; this app uses a <b>combined WebSocket</b> stream.</div>
-    <label class="pill">Active: <select id="symbolSel"></select></label>
-    <button id="btnPause">⏸️ Pause Live</button>
-    <button id="btnResume">▶️ Resume Live</button>
-    <button id="btnJumpNow">⤴ Jump to Now</button>
+  <header>
+    <h1>📡 MTF Binance — Manual Preload / Live WS / Native Buy Alerts (Scored)</h1>
+  </header>
+
+  <div class="wrap">
+    <!-- LEFT CONTROL PANEL -->
+    <section class="card panel" id="controls">
+      <div class="grid cols2">
+        <div class="grid">
+          <label>Symbol (Spot)</label>
+          <input id="symbol" value="ETHUSDT" />
+        </div>
+        <div class="grid">
+          <label>Timeframes</label>
+          <select id="tfs" multiple size="6">
+            <option selected>1m</option>
+            <option selected>5m</option>
+            <option>15m</option>
+            <option>1h</option>
+            <option>4h</option>
+            <option>1d</option>
+          </select>
+          <span class="small muted">Hold Ctrl/⌘ to multi‑select</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Preload (candles / TF)</label>
+        <input id="limit" type="number" value="500" min="50" max="1000" step="50" />
+        <button class="primary" id="btnPreload">Preload API</button>
+      </div>
+
+      <div class="row">
+        <button id="btnConnect" class="primary">Connect WebSocket</button>
+        <button id="btnDisconnect" class="ghost">Disconnect</button>
+        <button id="btnClear" class="ghost">Clear Log</button>
+      </div>
+
+      <div class="row switch">
+        <input type="checkbox" id="enableAlerts" checked />
+        <label for="enableAlerts">Enable Native Alerts (window.alert)</label>
+        <button id="btnTest">Test Alert</button>
+      </div>
+
+      <div class="grid cols2">
+        <div class="grid">
+          <label>Score Threshold (0–100)</label>
+          <input id="scoreThresh" type="number" min="0" max="100" value="80" />
+        </div>
+        <div class="grid">
+          <label>Alert Cooldown (sec)</label>
+          <input id="cooldown" type="number" min="10" max="600" value="90" />
+        </div>
+      </div>
+
+      <div class="indibox">
+        <div class="title">Buy Rule (Scored v2)</div>
+        <div class="small muted">Signal = weighted score aggregated across selected timeframes (heavier on 1m & 5m). Native alert triggers when:</div>
+        <ul class="small">
+          <li><b>TotalScore ≥ Threshold</b> (default 80/100) <span class="muted">and</span></li>
+          <li>1m &amp; 5m sub‑scores both ≥ 70, with MACD histogram crossing up &gt; 0</li>
+        </ul>
+        <div class="small muted">Score uses: EMA vs SMA &amp; VWAP, MACD cross &amp; momentum, RSI zone (50–70), Stoch K&gt;D from &lt;20, ADX strength, BB location, ATR normalized volatility, Donchian breakout bias, VWAP premium/discount, OBV trend.</div>
+      </div>
+
+      <div class="foot small">Tip: Edit <span class="hl">scoreTF()</span> to tweak weights. All math is client‑side, no keys required.</div>
+    </section>
+
+    <!-- RIGHT OUTPUT PANEL -->
+    <section class="card panel">
+      <div class="kps">
+        <span class="badge" id="state">Idle</span>
+        <span class="badge" id="wsCount">WS: 0</span>
+        <span class="badge" id="lastUpd">—</span>
+        <span class="badge" id="totalScore">Score: —</span>
+      </div>
+      <div id="output">Ready — preload to compute indicators.
+      </div>
+      <div id="log" class="panel"></div>
+    </section>
   </div>
 
-  <div id="chartWrap">
-    <canvas id="chart"></canvas>
-  </div>
+  <script>
+    // ========= Helpers =========
+    const $ = (q)=>document.querySelector(q);
+    const logBox = $('#log');
+    const outBox = $('#output');
+    function log(msg){
+      const ts = new Date().toLocaleTimeString();
+      logBox.textContent = `[${ts}] ${msg}\n` + logBox.textContent;
+    }
+    function setState(txt){ $('#state').textContent = txt }
+    function setWsCount(){ $('#wsCount').textContent = 'WS: '+ Object.keys(sockets).length }
+    function setStamp(){ $('#lastUpd').textContent = new Date().toLocaleTimeString() }
+    function fmt(n, d=2){ if(n==null||isNaN(n)) return '—'; return (+n).toFixed(d) }
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 
-  <pre id="output">Starting…</pre>
-  <div id="panel">Loading indicators…</div>
+    // ========= Data Stores =========
+    const candlesByTf = {}; // { tf: [ {t,o,h,l,c,v} ... ] }
+    const lastByTf = {};    // caches of last calc for signals & score
+    const sockets = {};     // { tf: WebSocket }
 
-  <div class="grid" id="tiles"></div>
+    // ========= Indicator Math =========
+    function SMA(period, data){ if(data.length < period) return null; let s=0; for(let i=data.length-period;i<data.length;i++) s+=data[i].c; return s/period }
+    function EMA(period, data){ if(data.length<period) return null; const k=2/(period+1); let e=data.slice(0,period).reduce((a,d)=>a+d.c,0)/period; for(let i=period;i<data.length;i++){ e=data[i].c*k+e*(1-k)} return e }
+    function EMAArray(period, data){ if(data.length<period) return null; const k=2/(period+1); let arr=[]; let e=data.slice(0,period).reduce((a,d)=>a+d.c,0)/period; arr.push(e); for(let i=period;i<data.length;i++){ e=data[i].c*k+e*(1-k); arr.push(e)} return arr }
+    function EMAFromArray(period, arr){ if(!arr||arr.length<period) return null; const k=2/(period+1); let out=[]; let e=arr.slice(0,period).reduce((a,v)=>a+v,0)/period; out.push(e); for(let i=period;i<arr.length;i++){ e=arr[i]*k+e*(1-k); out.push(e)} return out }
+    function MACD(data){ const e12=EMAArray(12,data); const e26=EMAArray(26,data); if(!e12||!e26){return [null,null,null]}; const len=Math.min(e12.length,e26.length); const macd=e12.slice(-len).map((v,i)=>v-e26[i]); const sig=EMAFromArray(9,macd); if(!sig) return [null,null,null]; const h=macd[macd.length-1]-sig[sig.length-1]; return [macd.at(-1), sig.at(-1), h] }
+    function RSI(period, data){ if(data.length<period+1) return null; let g=0,l=0; for(let i=data.length-period;i<data.length;i++){ const d=data[i].c-data[i-1].c; if(d>=0) g+=d; else l-=d } const ag=g/period, al=l/period; if(al===0) return 100; const rs=ag/al; return 100-100/(1+rs) }
+    function BB(period, data){ if(data.length<period) return [null,null,null]; const slice=data.slice(-period); const mean=slice.reduce((a,d)=>a+d.c,0)/period; const v=slice.reduce((a,d)=>a+(d.c-mean)**2,0)/period; const sd=Math.sqrt(v); return [mean, mean+2*sd, mean-2*sd] }
+    function ATR(period, data){ if(data.length<period+1) return null; let trs=[]; for(let i=1;i<data.length;i++){ const h=data[i].h, l=data[i].l, pc=data[i-1].c; trs.push(Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc))) } return trs.slice(-period).reduce((a,b)=>a+b,0)/period }
+    function Donch(period,data){ if(data.length<period) return [null,null]; const s=data.slice(-period); return [Math.max(...s.map(x=>x.h)), Math.min(...s.map(x=>x.l))] }
+    function VWAP(data){ let tpv=0, vol=0; for(const k of data){ const tp=(k.h+k.l+k.c)/3; tpv+=tp*k.v; vol+=k.v } return tpv/vol }
+    function OBV(data){ if(data.length<2) return 0; let obv=0; for(let i=1;i<data.length;i++){ if(data[i].c>data[i-1].c) obv+=data[i].v; else if(data[i].c<data[i-1].c) obv-=data[i].v } return obv }
+    function Pivots(c){ const p=(c.h+c.l+c.c)/3; const s1=2*p-c.h; const r1=2*p-c.l; return [p,s1,r1] }
+    function ParabolicSAR(data, step=0.02, max=0.2){ if(data.length<2) return null; let up=true, sar=data.at(-2).l, ep=data.at(-2).h, af=step; for(let i=data.length-2;i<data.length;i++){ if(up){ sar+=af*(ep-sar); if(data[i].l<sar){ up=false; sar=ep; ep=data[i].l; af=step } else if(data[i].h>ep){ ep=data[i].h; af=Math.min(af+step,max) } } else { sar+=af*(ep-sar); if(data[i].h>sar){ up=true; sar=ep; ep=data[i].h; af=step } else if(data[i].l<ep){ ep=data[i].l; af=Math.min(af+step,max) } } } return sar }
+    function ADX(period,data){ if(data.length<period+1) return null; let plus=[],minus=[],trs=[]; for(let i=1;i<data.length;i++){ const up=data[i].h-data[i-1].h; const dn=data[i-1].l-data[i].l; plus.push(up>dn&&up>0?up:0); minus.push(dn>up&&dn>0?dn:0); trs.push(Math.max(data[i].h-data[i].l, Math.abs(data[i].h-data[i-1].c), Math.abs(data[i].l-data[i-1].c))) } const atr=trs.slice(-period).reduce((a,b)=>a+b,0)/period; const p=100*(plus.slice(-period).reduce((a,b)=>a+b,0)/period)/atr; const m=100*(minus.slice(-period).reduce((a,b)=>a+b,0)/period)/atr; const dx=100*Math.abs(p-m)/(p+m); return dx }
+    const stochBuf = {}; // {tf: number[]} for %D
+    function Stoch(period,data,tf){ if(data.length<period) return [null,null]; const s=data.slice(-period); const H=Math.max(...s.map(d=>d.h)); const L=Math.min(...s.map(d=>d.l)); const C=data.at(-1).c; const K = ((C-L)/(H-L))*100; (stochBuf[tf]??=[]).push(K); if(stochBuf[tf].length>3) stochBuf[tf].shift(); const D = stochBuf[tf].length===3 ? (stochBuf[tf].reduce((a,b)=>a+b,0)/3) : null; return [K,D] }
 
-<script>
-/** ==============================
- *  CONFIG
- *  ============================== */
-const SYMBOLS = [
-  'BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','TRXUSDT','MATICUSDT','DOTUSDT',
-  'LTCUSDT','BCHUSDT','LINKUSDT','ATOMUSDT','AVAXUSDT','XLMUSDT','ETCUSDT','FILUSDT','ICPUSDT','NEARUSDT',
-  'APTUSDT','ARBUSDT','OPUSDT','SUIUSDT','SEIUSDT','PEPEUSDT','SHIBUSDT','FTMUSDT','ALGOUSDT','AAVEUSDT',
-  'UNIUSDT','TONUSDT','MKRUSDT','INJUSDT','IMXUSDT','RUNEUSDT','SNXUSDT','GMXUSDT','DYDXUSDT','EGLDUSDT',
-  'EOSUSDT','STXUSDT','GRTUSDT','SANDUSDT','MANAUSDT','AXSUSDT','CHZUSDT','ENJUSDT','CFXUSDT','QTUMUSDT'
-];
-const INTERVAL = '1m';
-const REST_LIMIT = 1000; // Binance max per request
-const PRELOAD = 50_000;  // per pair
-const STORE_ALL = false; // cap memory to last 12k for safety
-const MAX_STORE = 12_000;
-const VISIBLE = 1000;
-const FETCH_DELAY_MS = 30; // gentle throttle between batches per pair
-const DRAW_EVERY = 200;    // redraw cadence during preload
-
-/** ==============================
- *  STATE & UI
- *  ============================== */
-const output = document.getElementById('output');
-const panel  = document.getElementById('panel');
-const statusEl = document.getElementById('status');
-const progressEl = document.getElementById('progress');
-const liveEl = document.getElementById('live');
-const visNEl = document.getElementById('visN');
-const btnPause = document.getElementById('btnPause');
-const btnResume = document.getElementById('btnResume');
-const btnJumpNow = document.getElementById('btnJumpNow');
-const tiles = document.getElementById('tiles');
-const symbolSel = document.getElementById('symbolSel');
-
-let active = SYMBOLS[0];
-let livePaused = false;
-let fetchedTotal = 0;
-let ws = null;
-
-const per = {}; // per[symbol] = { candles:[], lastAlertTs:null, lastUpdateTs:0 }
-
-SYMBOLS.forEach(s=>{
-  per[s] = { candles:[], lastAlertTs:0, lastWsCandleTs:0 };
-  const opt = document.createElement('option'); opt.value = s; opt.textContent = s; symbolSel.appendChild(opt);
-});
-symbolSel.value = active;
-symbolSel.onchange = ()=>{ active = symbolSel.value; drawChart(true); updateIndicators(active); };
-
-/** ==============================
- *  UTILS
- *  ============================== */
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const fmt = (n, d=2) => (n == null || Number.isNaN(n)) ? '⏳' : Number(n).toFixed(d);
-const pushLog = (s) => { output.textContent = s + "\n" + output.textContent; };
-const clampStore = (arr) => { if (!STORE_ALL && arr.length > MAX_STORE) return arr.slice(-MAX_STORE); return arr; };
-
-/** ==============================
- *  Notifications (native pop-up)
- *  ============================== */
-async function ensureNotify(){
-  try{ if (Notification && Notification.permission === 'default') await Notification.requestPermission(); }catch{}
-}
-function notify(title, body){
-  try{
-    if (Notification && Notification.permission === 'granted') new Notification(title,{ body });
-  }catch{}
-  // Also show a JS alert() for guaranteed pop if user is active
-  try{ alert(`${title}\n${body}`); }catch{}
-}
-
-/** ==============================
- *  REST: Preload 10,000 candles per pair (backwards)
- *  ============================== */
-async function fetchHistoryFor(sym){
-  const target = PRELOAD; let fetched = 0; let endTime = Date.now();
-  const st = per[sym];
-  while (fetched < target){
-    const url = new URL('https://api.binance.com/api/v3/klines');
-    url.searchParams.set('symbol', sym);
-    url.searchParams.set('interval', INTERVAL);
-    url.searchParams.set('endTime', endTime);
-    url.searchParams.set('limit', REST_LIMIT);
-    try{
+    // ========= REST (Manual Preload) =========
+    async function fetchBinanceKlines(symbol, interval, limit, endTime=null){
+      // returns array of {t,o,h,l,c,v}
+      const url = new URL('https://api.binance.com/api/v3/klines');
+      url.searchParams.set('symbol', symbol.toUpperCase());
+      url.searchParams.set('interval', interval);
+      url.searchParams.set('limit', Math.min(limit,1000));
+      if(endTime) url.searchParams.set('endTime', endTime);
       const res = await fetch(url.toString());
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw = await res.json();
-      if(!Array.isArray(raw) || raw.length === 0){ pushLog(`⚠️ ${sym}: no more history`); break; }
-      const batch = raw.map(k=>({ time:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5] }));
-      st.candles = batch.concat(st.candles);
-      fetched += batch.length; fetchedTotal += batch.length;
-      endTime = batch[0].time - 1;
-      st.candles = clampStore(st.candles);
-      if (fetched % DRAW_EVERY === 0 && sym === active) drawChart();
-      progressEl.textContent = `Fetched: ${fetchedTotal.toLocaleString()} / ${(SYMBOLS.length*PRELOAD).toLocaleString()}`;
-      await sleep(FETCH_DELAY_MS);
-      if (raw.length < REST_LIMIT) break;
-    }catch(e){ pushLog(`❌ ${sym} fetch error: ${e.message}`); await sleep(500); }
-  }
-}
-
-async function preloadAll(){
-  statusEl.textContent = 'Status: preloading 10k per pair…';
-  // Render tiles
-  tiles.innerHTML = '';
-  SYMBOLS.forEach(s=>{
-    const div = document.createElement('div'); div.className='tile'; div.onclick=()=>{ active=s; symbolSel.value=s; drawChart(true); updateIndicators(s); };
-    div.innerHTML = `<h4>${s}</h4><canvas class="spark" id="sp_${s}"></canvas><div class="badg" id="bd_${s}">—</div>`;
-    tiles.appendChild(div);
-  });
-  // Parallel with small staggering to avoid burst
-  for (let i=0;i<SYMBOLS.length;i++){
-    const s = SYMBOLS[i];
-    fetchHistoryFor(s).then(()=>{
-      if (s===active){ updateIndicators(s); drawChart(true); }
-      drawSpark(s);
-    });
-    await sleep(80);
-  }
-  statusEl.textContent = 'Status: preload started (streams will attach)';
-}
-
-/** ==============================
- *  WebSocket: Combined stream for all pairs
- *  ============================== */
-function startCombinedWS(){
-  if (ws) try{ ws.close(); }catch{}
-  const streams = SYMBOLS.map(s => `${s.toLowerCase()}@kline_${INTERVAL}`).join('/');
-  const url = `wss://stream.binance.com:9443/stream?streams=${streams}`;
-  ws = new WebSocket(url);
-
-  ws.onopen = ()=>{ liveEl.textContent = 'Live: connected'; pushLog('✅ Combined WebSocket connected.'); };
-  ws.onerror = ()=>{ liveEl.textContent = 'Live: error'; pushLog('❌ WebSocket error'); };
-  ws.onclose = ()=>{ liveEl.textContent = 'Live: closed'; pushLog('⚠️ WebSocket closed. Reconnecting…'); setTimeout(startCombinedWS, 1500); };
-
-  ws.onmessage = (ev)=>{
-    if (livePaused) return;
-    const msg = JSON.parse(ev.data);
-    if (!msg || !msg.data || !msg.data.k) return;
-    const k = msg.data.k; const sym = msg.data.s || k.s || msg.stream?.split('@')[0].toUpperCase();
-    const st = per[sym]; if(!st) return;
-
-    const incoming = { time:k.t, open:+k.o, high:+k.h, low:+k.l, close:+k.c, volume:+k.v };
-    const arr = st.candles;
-    const last = arr[arr.length-1];
-    const sameBar = last && last.time === incoming.time;
-    if (sameBar) arr[arr.length-1] = incoming; else { arr.push(incoming); per[sym].lastWsCandleTs = incoming.time; }
-    st.candles = clampStore(arr);
-
-    // Only log if active to keep output readable
-    if (sym === active){
-      const ts = new Date(incoming.time).toLocaleTimeString();
-      const delta = (last ? incoming.close - last.close : 0);
-      pushLog(`${sameBar ? '⚡' : '🟢'} ${sym} [${ts}] O:${fmt(incoming.open)} H:${fmt(incoming.high)} L:${fmt(incoming.low)} C:${fmt(incoming.close)} (Δ ${fmt(delta)}) V:${fmt(incoming.volume,0)}`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const arr = await res.json();
+      return arr.map(k=>({ t:k[0]/1000, o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5] }));
     }
 
-    if (sym === active) { drawChart(); updateIndicators(sym); }
-    drawSpark(sym);
-    evaluateBuyAlert(sym);
-  };
-}
+    async function manualPreload(){
+      const symbol = $('#symbol').value.trim().toUpperCase();
+      const limit = +$('#limit').value;
+      const tfs = [...$('#tfs').selectedOptions].map(o=>o.value);
+      setState('Preloading…');
+      for(const tf of tfs){
+        try{
+          const data = await fetchBinanceKlines(symbol, tf, limit);
+          candlesByTf[tf] = data;
+          log(`✅ Preloaded ${data.length} candles for ${symbol} ${tf}`);
+          renderPanel(tf);
+        }catch(e){
+          log(`❌ Preload failed for ${symbol} ${tf}: ${e.message}`);
+        }
+      }
+      updateTotalScore();
+      setState('Idle');
+    }
 
-btnPause.onclick = ()=>{ livePaused = true; liveEl.textContent = 'Live: paused'; };
-btnResume.onclick = ()=>{ livePaused = false; liveEl.textContent = 'Live: connected'; };
-btnJumpNow.onclick = ()=> drawChart(true);
+    // ========= WebSocket (Manual Start/Stop) =========
+    function connectWS(){
+      const symbol = $('#symbol').value.trim().toLowerCase();
+      const tfs = [...$('#tfs').selectedOptions].map(o=>o.value);
+      for(const tf of tfs){
+        if(sockets[tf]) continue; // already open
+        const url = `wss://stream.binance.com:9443/ws/${symbol}@kline_${tf}`;
+        const ws = new WebSocket(url);
+        sockets[tf] = ws;
+        ws.onopen = ()=>{ log(`🔌 WS open: ${symbol} ${tf}`); setWsCount(); setState('Live') };
+        ws.onmessage = (ev)=>{
+          const msg = JSON.parse(ev.data);
+          if(!msg.k) return; // kline payload
+          const k = msg.k; // https://binance-docs.github.io/apidocs/spot/en/#kline-candlestick-streams
+          const obj = { t:k.t/1000, o:+k.o, h:+k.h, l:+k.l, c:+k.c, v:+k.v };
+          const list = candlesByTf[tf] || (candlesByTf[tf]=[]);
+          if(!list.length || obj.t > list.at(-1).t){ list.push(obj) } else { list[list.length-1] = obj }
+          if(list.length>2000) list.splice(0, list.length-1500); // trim
+          renderPanel(tf);
+          checkSignals(tf);
+          updateTotalScore();
+          setStamp();
+        };
+        ws.onerror = ()=>{ log(`⚠️ WS error: ${symbol} ${tf}`) };
+        ws.onclose = ()=>{ log(`🔌 WS closed: ${symbol} ${tf}`); delete sockets[tf]; setWsCount(); if(Object.keys(sockets).length===0) setState('Idle') };
+      }
+    }
+    function disconnectWS(){ for(const tf in sockets){ try{ sockets[tf].close() }catch{} delete sockets[tf] } setWsCount(); setState('Idle'); }
 
-/** ==============================
- *  Indicators (same math across pairs)
- *  ============================== */
-function SMA(p, arr){ if(arr.length<p) return null; let s=0; for(let i=arr.length-p;i<arr.length;i++) s+=arr[i].close; return s/p; }
-function EMA(p, arr){ if(arr.length<p) return null; const k=2/(p+1); let ema=0,sum=0; for(let i=0;i<p;i++) sum+=arr[i].close; ema=sum/p; for(let i=p;i<arr.length;i++) ema=arr[i].close*k+ema*(1-k); return ema; }
-function EMAArray(p,arr){ if(arr.length<p) return null; const k=2/(p+1); const out=[]; let sum=0; for(let i=0;i<p;i++) sum+=arr[i].close; let ema=sum/p; out.push(ema); for(let i=p;i<arr.length;i++){ ema=arr[i].close*k+ema*(1-k); out.push(ema);} return out; }
-function EMAFromArray(p,series){ if(!series||series.length<p) return null; const k=2/(p+1); const out=[]; let sum=0; for(let i=0;i<p;i++) sum+=series[i]; let ema=sum/p; out.push(ema); for(let i=p;i<series.length;i++){ ema=series[i]*k+ema*(1-k); out.push(ema);} return out; }
-function MACD(arr){ const e12=EMAArray(12,arr), e26=EMAArray(26,arr); if(!e12||!e26) return [null,null,null]; const n=Math.min(e12.length,e26.length); const macdLine=[]; for(let i=0;i<n;i++) macdLine.push(e12[e12.length-n+i]-e26[e26.length-n+i]); const signal=EMAFromArray(9,macdLine); if(!signal) return [null,null,null]; const hist=macdLine[macdLine.length-1]-signal[signal.length-1]; return [macdLine[macdLine.length-1], signal[signal.length-1], hist]; }
-function RSI(p,arr){ if(arr.length<p+1) return null; let gains=0,losses=0; for(let i=arr.length-p;i<arr.length;i++){ const d=arr[i].close-arr[i-1].close; if(d>=0) gains+=d; else losses-=d; } const ag=gains/p, al=losses/p; if(al===0) return 100; const rs=ag/al; return 100-100/(1+rs); }
-function Bollinger(p,arr){ if(arr.length<p) return [null,null,null]; const slice=arr.slice(-p); const mean=slice.reduce((a,c)=>a+c.close,0)/p; const variance=slice.reduce((a,c)=>a+(c.close-mean)**2,0)/p; const sd=Math.sqrt(variance); return [mean, mean+2*sd, mean-2*sd]; }
-function ATR(p,arr){ if(arr.length<p+1) return null; const trs=[]; for(let i=1;i<arr.length;i++){ const h=arr[i].high,l=arr[i].low,pc=arr[i-1].close; trs.push(Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc))); } const last=trs.slice(-p); return last.reduce((a,b)=>a+b,0)/p; }
-function Donchian(p,arr){ if(arr.length<p) return [null,null]; const s=arr.slice(-p); return [Math.max(...s.map(x=>x.high)), Math.min(...s.map(x=>x.low))]; }
-function VWAP(arr){ let tpv=0,vol=0; for(const k of arr){ const tp=(k.high+k.low+k.close)/3; tpv+=tp*k.volume; vol+=k.volume; } return vol? (tpv/vol):null; }
-function OBV(arr){ if(arr.length<2) return 0; let obv=0; for(let i=1;i<arr.length;i++){ if(arr[i].close>arr[i-1].close) obv+=arr[i].volume; else if(arr[i].close<arr[i-1].close) obv-=arr[i].volume; } return obv; }
-function Pivots(c){ if(!c) return [null,null,null]; const p=(c.high+c.low+c.close)/3; const s1=(2*p)-c.high; const r1=(2*p)-c.low; return [p,s1,r1]; }
-function ParabolicSAR(arr, step=0.02, max=0.2){ if(arr.length<2) return null; let isUp=true, sar=arr[arr.length-2].low, ep=arr[arr.length-2].high, af=step; for(let i=arr.length-2;i<arr.length;i++){ if(isUp){ sar+=af*(ep-sar); if(arr[i].low<sar){ isUp=false; sar=ep; ep=arr[i].low; af=step; } else if(arr[i].high>ep){ ep=arr[i].high; af=Math.min(af+step,max); } } else { sar+=af*(ep-sar); if(arr[i].high>sar){ isUp=true; sar=ep; ep=arr[i].high; af=step; } else if(arr[i].low<ep){ ep=arr[i].low; af=Math.min(af+step,max); } } } return sar; }
-function ADX(p,arr){ if(arr.length<p+1) return null; const plusDM=[],minusDM=[],trs=[]; for(let i=1;i<arr.length;i++){ const up=arr[i].high-arr[i-1].high; const dn=arr[i-1].low-arr[i].low; plusDM.push(up>dn&&up>0?up:0); minusDM.push(dn>up&&dn>0?dn:0); trs.push(Math.max(arr[i].high-arr[i].low, Math.abs(arr[i].high-arr[i-1].close), Math.abs(arr[i].low-arr[i-1].close))); } const avgTR=trs.slice(-p).reduce((a,b)=>a+b,0)/p; const avgPlus=plusDM.slice(-p).reduce((a,b)=>a+b,0)/p; const avgMinus=minusDM.slice(-p).reduce((a,b)=>a+b,0)/p; const plusDI=100*(avgPlus/avgTR), minusDI=100*(avgMinus/avgTR); const dx=100*Math.abs(plusDI-minusDI)/(plusDI+minusDI); return dx; }
-let stochBufMap = new Map();
-function Stochastic(p,arr,sym){ if(arr.length<p) return [null,null]; const s=arr.slice(-p); const hi=Math.max(...s.map(x=>x.high)); const lo=Math.min(...s.map(x=>x.low)); const close=arr[arr.length-1].close; const k=(hi===lo)?50:((close-lo)/(hi-lo))*100; let buf=stochBufMap.get(sym)||[]; buf.push(k); if(buf.length>3) buf.shift(); stochBufMap.set(sym,buf); const d=buf.length===3?(buf[0]+buf[1]+buf[2])/3:null; return [k,d]; }
+    // ========= UI Bindings =========
+    $('#btnPreload').onclick = manualPreload;
+    $('#btnConnect').onclick = connectWS;
+    $('#btnDisconnect').onclick = disconnectWS;
+    $('#btnClear').onclick = ()=>{ logBox.textContent = '' };
+    $('#btnTest').onclick = ()=>{ if($('#enableAlerts').checked) alert('🔔 Test Alert — looks good!') };
 
-/** ==============================
- *  Indicator Panel Update (active symbol)
- *  ============================== */
-function updateIndicators(sym=active){
-  const arr = per[sym].candles; const n=arr.length; if(n<30){ panel.textContent='⏳ Waiting for more candles…'; return; }
-  const view = arr.slice(-150);
-  const sma14=SMA(14,view); const ema14=EMA(14,view);
-  const [macd,signal,hist]=MACD(view);
-  const rsi14=RSI(14,view);
-  const [bbMid,bbU,bbL]=Bollinger(20,view);
-  const atr14=ATR(14,view);
-  const [dcH,dcL]=Donchian(20,view);
-  const vwap=VWAP(view);
-  const obv=OBV(view);
-  const [pivot,s1,r1]=Pivots(view[view.length-1]);
-  const psar=ParabolicSAR(view);
-  const adx14=ADX(14,view);
-  const [stK,stD]=Stochastic(14,view,sym);
-  const emaSignal=(ema14!=null && sma14!=null)? (ema14>sma14? '🟢 Bullish EMA> SMA': (ema14<sma14?'🔴 Bearish EMA< SMA':'〰️ Flat')):'⏳';
-  panel.innerHTML = `
-    <h3>🔹 Trend</h3>
-    • SMA14: ${fmt(sma14)}<br>
-    • EMA14: ${fmt(ema14)}<br>
-    • EMA vs SMA: ${emaSignal}<br>
-    • MACD: ${fmt(macd,4)} / Signal: ${fmt(signal,4)} / Hist: <span class="${(hist||0)>=0?'green':'red'}">${fmt(hist,4)}</span><br>
-    • Parabolic SAR: ${fmt(psar)}<br>
-    • ADX(14): ${fmt(adx14)}
-    <h3>🔸 Momentum</h3>
-    • RSI14: <span class="${(rsi14||0)>=50?'green':'red'}">${fmt(rsi14)}</span><br>
-    • Stoch %K: ${fmt(stK)} — %D: ${fmt(stD)}
-    <h3>🌪️ Volatility</h3>
-    • BB Mid: ${fmt(bbMid)} | Upper: ${fmt(bbU)} | Lower: ${fmt(bbL)}<br>
-    • ATR14: ${fmt(atr14)}<br>
-    • Donchian H/L(20): ${fmt(dcH)} / ${fmt(dcL)}
-    <h3>📦 Volume</h3>
-    • VWAP: ${fmt(vwap)}<br>
-    • OBV: ${fmt(obv,0)}
-    <h3>🔍 Price Pivots</h3>
-    • Pivot: ${fmt(pivot)} | S1: ${fmt(s1)} | R1: ${fmt(r1)}
-  `;
-}
+    // ========= Rendering =========
+    function colorize(v, pos=true){ if(v==null||isNaN(v)) return '<span class="muted">—</span>'; const cls = pos ? (v>0?'ok':(v<0?'bad':'warn')) : (v<0?'ok':(v>0?'bad':'warn')); return `<span class="${cls}">${fmt(v)}</span>` }
 
-/** ==============================
- *  BUY Alert Logic (uses ALL indicators cohesively)
- *  ============================== */
-function evaluateBuyAlert(sym){
-  const arr = per[sym].candles; if (arr.length < 30) return; // need data
-  const view = arr.slice(-150);
-  const last = view[view.length-1];
-  const sma14=SMA(14,view); const ema14=EMA(14,view);
-  const [macd,signal,hist]=MACD(view);
-  const rsi14=RSI(14,view);
-  const [bbMid]=Bollinger(20,view);
-  const atr14=ATR(14,view);
-  const [dcH,dcL]=Donchian(20,view);
-  const vwap=VWAP(view);
-  const obv=OBV(view);
-  const [pivot]=Pivots(last);
-  const psar=ParabolicSAR(view);
-  const adx14=ADX(14,view);
-  const [stK,stD]=Stochastic(14,view,sym);
+    function renderPanel(tf){
+      const list = candlesByTf[tf]; if(!list||list.length<35) { outBox.textContent = `⏳ Waiting for more candles on ${tf}…`; return }
+      const sma14 = SMA(14,list), ema14 = EMA(14,list);
+      const [m,s,h] = MACD(list);
+      const rsi = RSI(14,list);
+      const [mid,bbU,bbL] = BB(20,list);
+      const atr = ATR(14,list);
+      const [dcH,dcL] = Donch(20,list);
+      const vwap = VWAP(list);
+      const obv = OBV(list);
+      const [p,s1,r1] = Pivots(list.at(-1));
+      const sar = ParabolicSAR(list);
+      const adx = ADX(14,list);
+      const [k,d] = Stoch(14,list,tf);
 
-  // Cohesive BUY rule requiring confirmations across indicators
-  const trendUp = (ema14!=null&&sma14!=null) && ema14>sma14;
-  const macdBull = macd!=null && signal!=null && macd>signal && (hist||0)>0;
-  const rsiBull = (rsi14||0) >= 55;
-  const priceAboveBBmid = bbMid!=null && last.close > bbMid;
-  const psarBull = psar!=null && last.close > psar;
-  const adxOk = (adx14||0) >= 18; // trend strength
-  const stochUp = stK!=null && stD!=null && stK > stD && stK < 85;
-  const aboveVWAP = vwap!=null && last.close > vwap;
-  const abovePivot = pivot!=null && last.close > pivot;
-  const donchianNearHigh = (dcH!=null) && (last.close > (dcH + dcL)/2);
-  const obvNotFalling = (obv||0) >= 0; // simple non-negative since we compute relative
+      const last = list.at(-1);
+      const head = `\n== ${$('#symbol').value.toUpperCase()} ${tf} ==  \n`
+                  + `O:${fmt(last.o)}  H:${fmt(last.h)}  L:${fmt(last.l)}  C:${fmt(last.c)}  V:${fmt(last.v,0)}\n`;
+      const body = `Trend  | SMA14 ${fmt(sma14)}  EMA14 ${fmt(ema14)}  SAR ${fmt(sar)}  ADX ${fmt(adx)}\n`
+                 + `MACD   | Line ${fmt(m)}  Sig ${fmt(s)}  Hist ${fmt(h)}\n`
+                 + `Mom    | RSI14 ${fmt(rsi)}  StochK ${fmt(k)}  StochD ${fmt(d)}\n`
+                 + `Vol    | BB[U ${fmt(bbU)} | L ${fmt(bbL)}]  ATR ${fmt(atr)}  Donch[H ${fmt(dcH)} | L ${fmt(dcL)}]\n`
+                 + `Volume | VWAP ${fmt(vwap)}  OBV ${fmt(obv,0)}\n`
+                 + `Pivots | P ${fmt(p)}  S1 ${fmt(s1)}  R1 ${fmt(r1)}\n`;
 
-  const ok = trendUp && macdBull && rsiBull && priceAboveBBmid && psarBull && adxOk && stochUp && aboveVWAP && abovePivot && donchianNearHigh && obvNotFalling;
+      const existing = document.getElementById('tf-'+tf);
+      const scoreObj = scoreTF(tf);
+      const html = `<div class="indibox" id="tf-${tf}">
+        <div class="title">${$('#symbol').value.toUpperCase()} • ${tf} — Score: <span class="hl">${fmt(scoreObj.score,0)}</span></div>
+        <div class="bar" aria-label="${tf} score bar"><i style="width:${clamp(scoreObj.score,0,100)}%"></i></div>
+        <pre>${head+body}</pre>
+        <div class="small muted">${scoreObj.explain}</div>
+      </div>`;
+      if(existing) existing.outerHTML = html; else outBox.insertAdjacentHTML('beforeend', html);
 
-  const badge = document.getElementById(`bd_${sym}`);
-  if (ok){
-    badge.textContent = 'BUY'; badge.className = 'badg buy';
-  } else {
-    badge.textContent = '—'; badge.className = 'badg';
-  }
+      // save for cross checks & alerts
+      lastByTf[tf] = { sma14, ema14, macd:h, macdLine:m, macdSig:s, rsi, k, d, vwap, adx, close:last.c, atr };
+    }
 
-  // Trigger native popup only ONCE per candle when conditions flip true
-  const lastTs = per[sym].lastAlertTs || 0;
-  const candleTs = last.time; // ms
-  if (ok && candleTs !== lastTs){
-    per[sym].lastAlertTs = candleTs;
-    const msg = `${sym} BUY @ ${fmt(last.close)}  | EMA>SMA, MACD+, RSI ${fmt(rsi14)} | ADX ${fmt(adx14)} | VWAP ${fmt(vwap)} | BBmid ${fmt(bbMid)}`;
-    pushLog(`🔔 ${msg}`);
-    notify(`BUY Alert — ${sym}`, msg);
-  }
-}
+    // ========= Scoring =========
+    // Returns {score: 0..100, explain: string}
+    const prevSig = {}; // {tf: {macdH, kBelow20, kOverD}}
 
-/** ==============================
- *  Canvas Chart (active symbol)
- *  ============================== */
-const canvas = document.getElementById('chart');
-const ctx = canvas.getContext('2d');
-function resizeCanvas(){ const dpr=window.devicePixelRatio||1; const rect=canvas.getBoundingClientRect(); canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
-window.addEventListener('resize', ()=>{ resizeCanvas(); drawChart(); });
-resizeCanvas();
+    function scoreTF(tf){
+      const L = lastByTf[tf] || computeLite(tf);
+      if(!L) return {score:0, explain:`No data for ${tf}`};
 
-function drawChart(scrollToEnd=false){
-  const arr = per[active].candles; if (!arr.length) return; visNEl.textContent = VISIBLE;
-  const w=canvas.clientWidth, h=canvas.clientHeight; ctx.clearRect(0,0,w,h);
-  // grid
-  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1; for(let i=0;i<8;i++){ const y=(h/8)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-  const view = arr.slice(-VISIBLE); const maxP=Math.max(...view.map(c=>c.high)); const minP=Math.min(...view.map(c=>c.low)); const cw=w/view.length;
-  for(let i=0;i<view.length;i++){
-    const c=view[i]; const x=i*cw; const yOpen=(1-(c.open-minP)/(maxP-minP))*h; const yClose=(1-(c.close-minP)/(maxP-minP))*h; const yHigh=(1-(c.high-minP)/(maxP-minP))*h; const yLow=(1-(c.low-minP)/(maxP-minP))*h;
-    ctx.strokeStyle = (c.close>=c.open)? '#0f0' : '#ff4d4d'; ctx.beginPath(); ctx.moveTo(x+cw/2,yHigh); ctx.lineTo(x+cw/2,yLow); ctx.stroke();
-    ctx.fillStyle = (c.close>=c.open)? '#0f0' : '#ff4d4d'; const bodyY=Math.min(yOpen,yClose); const bodyH=Math.max(2, Math.abs(yClose-yOpen)); ctx.fillRect(x+1, bodyY, Math.max(1,cw-2), bodyH);
-  }
-  const last = view[view.length-1]; ctx.fillStyle = '#00ffff'; ctx.fillText(`${active}  C: ${fmt(last.close)}`, 8, 14);
-}
+      // 1) Trend (EMA>SMA & price>VWAP)
+      let trend = 0; if(L.ema14!=null && L.sma14!=null){ trend += (L.ema14>L.sma14?30:0); }
+      if(L.close!=null && L.vwap!=null){ trend += (L.close>L.vwap?20:0); }
 
-/** ==============================
- *  Sparkline mini charts per tile
- *  ============================== */
-function drawSpark(sym){
-  const arr = per[sym].candles; const el = document.getElementById(`sp_${sym}`); if(!el||arr.length<20) return; const ctx2 = el.getContext('2d');
-  const dpr=window.devicePixelRatio||1; const rect=el.getBoundingClientRect(); el.width=rect.width*dpr; el.height=rect.height*dpr; ctx2.setTransform(dpr,0,0,dpr,0,0);
-  ctx2.clearRect(0,0,el.clientWidth, el.clientHeight);
-  const N=Math.min(120, arr.length); const v=arr.slice(-N); const w=el.clientWidth, h=el.clientHeight; const maxP=Math.max(...v.map(c=>c.high)); const minP=Math.min(...v.map(c=>c.low)); const dx=w/(v.length-1);
-  ctx2.beginPath(); for(let i=0;i<v.length;i++){ const x=i*dx; const y=(1-(v[i].close-minP)/(maxP-minP))*h; if(i===0) ctx2.moveTo(x,y); else ctx2.lineTo(x,y);} ctx2.strokeStyle='#0f0'; ctx2.lineWidth=1.5; ctx2.stroke();
-}
+      // 2) MACD Histogram cross + strength
+      const wasH = prevSig[tf]?.macdH ?? -9999; const macdCrossUp = (L.macd!=null && wasH<=0 && L.macd>0);
+      let macdW = 0; if(L.macd!=null){ macdW += clamp((L.macd/ (L.close*0.002))*20, -10, 20); } // normalize vs price
+      if(macdCrossUp) macdW += 20;
 
-/** ==============================
- *  Kickoff
- *  ============================== */
-(async function main(){
-  await ensureNotify();
-  await preloadAll();
-  startCombinedWS();
-  setInterval(()=> updateIndicators(active), 1000);
-})();
-</script>
+      // 3) RSI sweet spot (50..70, peak 60)
+      let rsiW = 0; if(L.rsi!=null){ const dist = Math.abs(L.rsi-60); rsiW = clamp(20 - dist, 0, 20); }
+
+      // 4) Stoch K>D & previously from <20
+      const stPrevBelow20 = (prevSig[tf]?.kBelow20 ?? true); const stNow = (L.k!=null && L.d!=null && L.k>L.d);
+      let stochW = 0; if(stNow) stochW += 10; if(stPrevBelow20 && stNow) stochW += 10;
+
+      // 5) ADX strength >=20 (scaled to 20pt max)
+      let adxW = 0; if(L.adx!=null){ adxW = clamp((L.adx/40)*20, 0, 20); }
+
+      // 6) BB location bias (above mid, not at upper extreme)
+      let bbW = 0; const list = candlesByTf[tf]; if(list && list.length>=20){
+        const [mid,up,lo] = BB(20,list); if(mid!=null){ if(L.close>mid) bbW+=5; if(L.close<up) bbW+=5; }
+      }
+
+      // 7) Donchian bias (towards upper)
+      let donW = 0; if(list && list.length>=20){ const [dcH,dcL] = Donch(20,list); if(dcH!=null){ const pos = (L.close-dcL)/Math.max(1e-9,(dcH-dcL)); donW = clamp(pos*10,0,10); } }
+
+      // 8) ATR normalized (prefer moderate volatility) 0..10
+      let atrW = 0; if(L.atr!=null && L.close){ const n = (L.atr/L.close); atrW = clamp(10 - Math.abs(n-0.003)/0.003*10, 0, 10); }
+
+      // 9) OBV drift (last 20 steps) 0..5
+      let obvW = 0; if(list && list.length>20){ const obNow = OBV(list); const obPrev = OBV(list.slice(0,-20)); obvW = obNow>obPrev?5:0; }
+
+      // update prev trackers for next cross checks
+      prevSig[tf] = { macdH: L.macd ?? wasH, kBelow20: (L.k!=null ? L.k<20 : (prevSig[tf]?.kBelow20 ?? true)) };
+
+      const score = clamp(trend + macdW + rsiW + stochW + adxW + bbW + donW + atrW + obvW, 0, 100);
+      const explain = `trend:${fmt(trend,0)} macd:${fmt(macdW,0)} rsi:${fmt(rsiW,0)} stoch:${fmt(stochW,0)} adx:${fmt(adxW,0)} bb:${fmt(bbW,0)} don:${fmt(donW,0)} atr:${fmt(atrW,0)} obv:${fmt(obvW,0)}`;
+      return { score, explain };
+    }
+
+    function computeLite(tf){
+      const list = candlesByTf[tf]; if(!list||list.length<35) return null;
+      // minimal pack just to allow score before renderPanel() runs
+      const sma14 = SMA(14,list), ema14 = EMA(14,list);
+      const [m,s,h] = MACD(list);
+      const rsi = RSI(14,list);
+      const vwap = VWAP(list);
+      const adx = ADX(14,list);
+      const [k,d] = Stoch(14,list,tf);
+      const last = list.at(-1);
+      const atr = ATR(14,list);
+      return (lastByTf[tf] = { sma14, ema14, macd:h, macdLine:m, macdSig:s, rsi, k, d, vwap, adx, close:last.c, atr });
+    }
+
+    function updateTotalScore(){
+      const tfs = [...$('#tfs').selectedOptions].map(o=>o.value);
+      if(tfs.length===0) { $('#totalScore').textContent = 'Score: —'; return }
+      const weights = Object.fromEntries(tfs.map(tf=>[tf, tf==='1m'?3: tf==='5m'?2: 1 ]));
+      let sum=0, wsum=0; for(const tf of tfs){ const sc = scoreTF(tf).score; const w = weights[tf]||1; if(sc!=null){ sum += sc*w; wsum += w } }
+      const total = wsum? (sum/wsum) : 0;
+      $('#totalScore').textContent = 'Score: '+fmt(total,0);
+      return total;
+    }
+
+    // ========= Alerts =========
+    const lastAlertAt = {}; // {symbol: epochSec}
+
+    function checkSignals(tf){
+      const tfs = [...$('#tfs').selectedOptions].map(o=>o.value);
+      const total = updateTotalScore();
+      const thresh = +$('#scoreThresh').value;
+      const needAlign = ['1m','5m'].filter(x=>tfs.includes(x));
+
+      // per‑TF guard: 1m & 5m both >=70 + MACD cross condition
+      function tfOK(t){ const sc = scoreTF(t); const L = lastByTf[t]; const wasH = prevSig[t]?.macdH ?? -9999; const macdCrossUp = (L && L.macd!=null && wasH<=0 && L.macd>0); return sc.score>=70 && macdCrossUp }
+      let aligned = needAlign.length===0 ? true : needAlign.every(tfOK);
+
+      if(total>=thresh && aligned){
+        fireBuyAlert(tf, total, needAlign);
+      }
+    }
+
+    function fireBuyAlert(tf, total, alignedTFs){
+      const sym = $('#symbol').value.toUpperCase();
+      const price = candlesByTf[tf]?.at(-1)?.c;
+      const cooldownSec = +$('#cooldown').value;
+      const now = Math.floor(Date.now()/1000);
+      const key = sym;
+      if(lastAlertAt[key] && (now - lastAlertAt[key]) < cooldownSec){ return } // cooldown
+      lastAlertAt[key] = now;
+
+      // Simple risk framework using 1m ATR if available
+      const L1m = lastByTf['1m'];
+      const atr = L1m?.atr || lastByTf[tf]?.atr || 0;
+      const sl = atr ? (price - 1.5*atr) : (price*0.995);
+      const tp = atr ? (price + 3*atr) : (price*1.01);
+
+      const msg = `🔔 BUY ALERT ${sym} @ ${fmt(price)}\nScore: ${fmt(total,0)} | Align: ${alignedTFs.join(' & ') || '—'}\nSL: ${fmt(sl)}  TP: ${fmt(tp)} (ATR‑based)`;
+      log(msg);
+      if($('#enableAlerts').checked) alert(msg);
+    }
+
+    // ======== Boot ========
+    log('Ready. 1) Preload via API. 2) Connect WS. 3) Alerts fire when total score ≥ threshold with 1m/5m alignment.');
+  </script>
 </body>
 </html>
