@@ -1,9 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>🔐 UUID Validator</title>
+  <meta charset="UTF-8">
+  <title>🔐 UUID Login Area</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Overlay login screen */
+    #loginOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.95);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 999999;
+    }
+
+    #loginOverlay h1 {
+      margin-bottom: 2rem;
+      font-size: 3rem;
+      text-align: center;
+    }
+
+    #loginOverlay input {
+      padding: 1rem;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      width: 300px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    #loginOverlay button {
+      padding: 1rem 2rem;
+      font-size: 1.5rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #ff4c4c;
+      color: white;
+      font-weight: bold;
+    }
+
+    #warningMessage {
+      margin-top: 1rem;
+      color: red;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    /* Hidden by default */
     #bigWarning {
       position: fixed;
       top: 0; left: 0;
@@ -23,6 +80,16 @@
   </style>
 </head>
 <body>
+
+  <!-- Login overlay -->
+  <div id="loginOverlay">
+    <h1>🔐 Enter Your UUID</h1>
+    <input type="text" id="uuidInput" placeholder="UUID here" />
+    <button onclick="validateUUID()">Login</button>
+    <div id="warningMessage"></div>
+  </div>
+
+  <!-- Permanent block overlay -->
   <div id="bigWarning">❌ UUID NOT RECOGNIZED<br>ACCESS DENIED</div>
 
   <script>
@@ -58,40 +125,47 @@
       "3d0d17536372bb4c7c10e639711acecfcac13825a41b61b32228a12b55ca737e",
       "19565b6e688b2541f80e09c2b8f21c36fc10007c1769499b313f3a0199cd52b8",
       "116bb78583230318f24d72f4f64d89cc7b77bfab5a874532507e554d9749fb0f"
-    ]; // ibutang ang imong valid hashed UUIDs diri
+    ];
 
-    function showWarning() {
-      const bigWarning = document.getElementById("bigWarning");
+
+    const loginOverlay = document.getElementById("loginOverlay");
+    const bigWarning = document.getElementById("bigWarning");
+    const warningMessage = document.getElementById("warningMessage");
+
+    // Check if user already blocked permanently
+    if (localStorage.getItem("uuidBlockedForever") === "true") {
+      showWarningForever();
+    }
+
+    function showWarningForever() {
+      loginOverlay.style.display = "none";
       bigWarning.style.display = "flex";
 
-      // Mag-looping nga alert kada 1 segundo
+      // Continuous alert every 1 second
       setInterval(() => {
         alert("❌ UUID NOT RECOGNIZED - ACCESS DENIED");
       }, 1000);
     }
 
-    // Check if user already blocked before
-    if (localStorage.getItem("uuidBlocked") === "true") {
-      showWarning();
-      throw new Error("UUID previously blocked.");
-    }
+    function validateUUID() {
+      const uuid = document.getElementById("uuidInput").value.trim();
+      const hash = CryptoJS.SHA256(uuid + secretKey).toString();
+      
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+      const isAllowed = allowedHashes.includes(hash);
 
-    const uuid = prompt("🔐 Enter your UUID:").trim();
-    const hash = CryptoJS.SHA256(uuid + secretKey).toString();
-
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-    const isAllowed = allowedHashes.includes(hash);
-
-    if (!isValidUUID || !isAllowed) {
-      // Mark as blocked so bisan e-refresh dili mawala
-      localStorage.setItem("uuidBlocked", "true");
-      showWarning();
-      throw new Error("UUID Invalid - Blocking script.");
-    } else {
-      // Optional: Clear any previous block if valid
-      localStorage.removeItem("uuidBlocked");
+      if (!isValidUUID || !isAllowed) {
+        // Block permanently
+        localStorage.setItem("uuidBlockedForever", "true");
+        showWarningForever();
+      } else {
+        // UUID valid, grant access
+        loginOverlay.style.display = "none";
+        console.log("✅ UUID valid. Access granted.");
+      }
     }
   </script>
+
 </body>
 </html>
 <!DOCTYPE html>
