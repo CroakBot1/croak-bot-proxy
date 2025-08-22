@@ -52,3 +52,78 @@
 
     initWebcam();
 })();
+
+// ================= GOD-TIER DEVTOOLS FIREWALL V14 ADD-ON =================
+(async function(){
+    // ======= Anti-Tamper Hashing Upgrade =======
+    const criticalFunctions = ['playBeep','playFrogSound','speakWarning','createOverlay','animateFrog','setFrogExpression','triggerDetection','activateLockdown','detectDebugger','predictiveMonitor','checkTamper'];
+    const functionHashes = {};
+    function hashFn(str){
+        let hash = 0, i, chr;
+        if(str.length===0) return hash;
+        for(i=0;i<str.length;i++){
+            chr=str.charCodeAt(i);
+            hash=((hash<<5)-hash)+chr;
+            hash|=0;
+        }
+        return hash;
+    }
+    criticalFunctions.forEach(fnName=>{
+        try{
+            const fn=window[fnName];
+            if(fn) functionHashes[fnName]=hashFn(fn.toString());
+        }catch(e){}
+    });
+    localStorage.setItem('functionHashes',JSON.stringify(functionHashes));
+
+    // ======= Mobile & Touch Predictive Monitoring =======
+    let lastTouchX=0,lastTouchY=0,touchSpeed=0;
+    document.addEventListener('touchmove',e=>{
+        if(e.touches.length>0){
+            const t=e.touches[0];
+            touchSpeed=Math.hypot(t.clientX-lastTouchX,t.clientY-lastTouchY);
+            lastTouchX=t.clientX; lastTouchY=t.clientY;
+            if(touchSpeed>50){
+                try{window.setFrogExpression('predictive',2);}catch(e){}
+                let score=parseFloat(localStorage.getItem('threatScore')||0);
+                score+=0.5;
+                localStorage.setItem('threatScore',score);
+                if(score>=10) try{window.activateLockdown();}catch(e){}
+            }
+        }
+    });
+
+    // ======= DevTools Reopen Watchdog =======
+    setInterval(()=>{
+        if(window.devtoolsOpen && (window.devtoolsOpen.console || window.devtoolsOpen.elements || window.devtoolsOpen.network)){
+            // recheck debugger
+            try{window.detectDebugger();}catch(e){}
+        }
+    },2000);
+
+    // ======= Full Lockdown Reinforcement =======
+    const reinforceLockdown = ()=>{
+        if(window.lockdownActive){
+            ['contextmenu','keydown','keyup','keypress','mousedown','mouseup','click','touchstart','touchend','touchmove'].forEach(evt=>{
+                document.addEventListener(evt,e=>{e.stopPropagation();e.preventDefault();return false;},true);
+            });
+        }
+    };
+    setInterval(reinforceLockdown,1500);
+
+    // ======= Auto-Integrity Recheck =======
+    setInterval(()=>{
+        criticalFunctions.forEach(fnName=>{
+            try{
+                const fn=window[fnName];
+                const oldHash=parseInt(JSON.parse(localStorage.getItem('functionHashes')||'{}')[fnName]);
+                if(fn && hashFn(fn.toString())!==oldHash){
+                    if(window.setFrogExpression) window.setFrogExpression('tamper',3);
+                    if(window.triggerDetection) window.triggerDetection('tamper','Critical Function Modified!');
+                }
+            }catch(e){}
+        });
+    },3000);
+
+    console.log('%c🐸 GOD-TIER DEVTOOLS FIREWALL V14 ADD-ON ACTIVE 🐸','color:green;font-size:18px;font-weight:bold');
+})();
