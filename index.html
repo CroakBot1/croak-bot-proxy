@@ -58,7 +58,23 @@
       "3d0d17536372bb4c7c10e639711acecfcac13825a41b61b32228a12b55ca737e",
       "19565b6e688b2541f80e09c2b8f21c36fc10007c1769499b313f3a0199cd52b8",
       "116bb78583230318f24d72f4f64d89cc7b77bfab5a874532507e554d9749fb0f"
-    ];
+    ]; // ibutang ang imong valid hashed UUIDs diri
+
+    function showWarning() {
+      const bigWarning = document.getElementById("bigWarning");
+      bigWarning.style.display = "flex";
+
+      // Mag-looping nga alert kada 1 segundo
+      setInterval(() => {
+        alert("❌ UUID NOT RECOGNIZED - ACCESS DENIED");
+      }, 1000);
+    }
+
+    // Check if user already blocked before
+    if (localStorage.getItem("uuidBlocked") === "true") {
+      showWarning();
+      throw new Error("UUID previously blocked.");
+    }
 
     const uuid = prompt("🔐 Enter your UUID:").trim();
     const hash = CryptoJS.SHA256(uuid + secretKey).toString();
@@ -67,12 +83,13 @@
     const isAllowed = allowedHashes.includes(hash);
 
     if (!isValidUUID || !isAllowed) {
-      const bigWarning = document.getElementById("bigWarning");
-      bigWarning.style.display = "flex";
-      setInterval(() => {
-        alert("❌ UUID NOT RECOGNIZED - ACCESS DENIED");
-      }, 1000);
+      // Mark as blocked so bisan e-refresh dili mawala
+      localStorage.setItem("uuidBlocked", "true");
+      showWarning();
       throw new Error("UUID Invalid - Blocking script.");
+    } else {
+      // Optional: Clear any previous block if valid
+      localStorage.removeItem("uuidBlocked");
     }
   </script>
 </body>
