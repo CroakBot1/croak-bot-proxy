@@ -779,7 +779,62 @@ document.getElementById("loginBtn").onclick = function(){
   setInterval(checkDevTools,250);
 })();
 </script>
+<script>
+  (function(){
+    // Wait until page fully loaded
+    window.addEventListener('load', function() {
+      setTimeout(showPopup, 3000); // 3 seconds delay
+    });
 
+    function showPopup() {
+      const popup = document.getElementById('myPopup');
+      const content = document.getElementById('myPopupContent');
+      if(!popup || !content) return;
+
+      popup.style.display = 'flex';
+      popup.style.opacity = 0;
+      content.style.transform = 'translateY(-50px)';
+
+      let opacity = 0;
+      let position = -50;
+      const fadeSlideIn = setInterval(() => {
+        if(opacity < 1) {
+          opacity += 0.05;
+          popup.style.opacity = opacity;
+        }
+        if(position < 0) {
+          position += 2.5;
+          content.style.transform = `translateY(${position}px)`;
+        }
+        if(opacity >= 1 && position >= 0) clearInterval(fadeSlideIn);
+      }, 30);
+    }
+
+    // Close popup with fade-out + slide-out
+    window.closePopup = function() {
+      const popup = document.getElementById('myPopup');
+      const content = document.getElementById('myPopupContent');
+      if(!popup || !content) return;
+
+      let opacity = 1;
+      let position = 0;
+      const fadeOut = setInterval(() => {
+        if(opacity > 0) {
+          opacity -= 0.05;
+          popup.style.opacity = opacity;
+        }
+        if(position > -50) {
+          position -= 2.5;
+          content.style.transform = `translateY(${position}px)`;
+        }
+        if(opacity <= 0 && position <= -50) {
+          clearInterval(fadeOut);
+          popup.style.display = 'none';
+        }
+      }, 30);
+    }
+  })();
+</script>
 </body>
 </html>
 <!DOCTYPE html>
