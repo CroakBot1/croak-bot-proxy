@@ -164,3 +164,104 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
   window.qbFetchAllPairsRealtime = runRealtimeTicker;
 })();
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+(function () {
+  const API_URL = "https://api-server-rg0h.onrender.com/prices"; 
+  const REFRESH_INTERVAL = 5000; // 5 seconds
+
+  function ensureStatusBox() {
+    let el = document.getElementById("qb-status-box");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "qb-status-box";
+      Object.assign(el.style, {
+        position: "fixed",
+        right: "12px",
+        bottom: "12px",
+        background: "rgba(0,0,0,0.75)",
+        color: "white",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        fontSize: "13px",
+        zIndex: 99999,
+        maxWidth: "360px",
+        maxHeight: "400px",
+        overflowY: "auto",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.3)"
+      });
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function setStatus(text, hint, color) {
+    const el = ensureStatusBox();
+    el.innerHTML = `<div style="color:${color || "white"}">${text}</div>` +
+                   (hint ? `<div style="opacity:0.8;font-size:12px;margin-top:6px">${hint}</div>` : "");
+  }
+
+  async function fetchAllPairsOnce() {
+    try {
+      setStatus("🔎 Loading prices...", "Please wait", "orange");
+
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error("Server error: " + res.status);
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      const prices = data.prices;
+      const box = ensureStatusBox();
+      box.innerHTML = `<b>✅ Loaded ${prices.length} pairs via ${data.base}</b><hr>`;
+      box.innerHTML += prices.slice(0, 10).map(p => `${p.symbol}: ${p.price}`).join("<br>");
+      if (prices.length > 10) {
+        box.innerHTML += `<br>... and ${prices.length - 10} more`;
+      }
+
+      return prices;
+    } catch (err) {
+      setStatus("❌ Failed to fetch", err.message, "red");
+      throw err;
+    }
+  }
+
+  async function runRealtimeTicker() {
+    try {
+      await fetchAllPairsOnce();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTimeout(runRealtimeTicker, REFRESH_INTERVAL);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runRealtimeTicker);
+  } else {
+    runRealtimeTicker();
+  }
+
+  // Manual refresh function
+  window.qbFetchAllPairsRealtime = runRealtimeTicker;
+})();
+</script>
