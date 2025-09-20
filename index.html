@@ -184,71 +184,116 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 
-
 <script>
 (function () {
   const API_URL = "https://api-server-rg0h.onrender.com/prices"; // 👉 ilisi kung imo server URL
   const REFRESH_INTERVAL = 5000;
+  let lastPrices = {};
 
-  function ensureBox() {
-    let box = document.getElementById("crypto-price-box");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "crypto-price-box";
-      Object.assign(box.style, {
+  function ensureStatusBox() {
+    let el = document.getElementById("qb-status-box");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "qb-status-box";
+      Object.assign(el.style, {
         position: "fixed",
         right: "12px",
         bottom: "12px",
-        background: "rgba(0,0,0,0.85)",
+        background: "rgba(0,0,0,0.75)",
         color: "white",
-        padding: "12px 14px",
-        borderRadius: "10px",
+        padding: "10px 12px",
+        borderRadius: "8px",
         fontSize: "13px",
         zIndex: 99999,
-        width: "240px",
-        maxHeight: "300px",
+        maxWidth: "360px",
+        maxHeight: "400px",
         overflowY: "auto",
-        boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.3)",
         fontFamily: "Arial, sans-serif"
       });
-      document.body.appendChild(box);
+      document.body.appendChild(el);
+
+      const dot = document.createElement("div");
+      dot.id = "qb-status-dot";
+      Object.assign(dot.style, {
+        width: "12px",
+        height: "12px",
+        borderRadius: "50%",
+        background: "gray",
+        position: "absolute",
+        top: "8px",
+        right: "8px"
+      });
+      el.appendChild(dot);
     }
-    return box;
+    return el;
+  }
+
+  function setStatus(text, hint, color) {
+    const el = ensureStatusBox();
+    const dot = document.getElementById("qb-status-dot");
+    if (dot && color) dot.style.background = color;
+
+    let content = `<div>${text}</div>`;
+    if (hint) {
+      content += `<div style="opacity:0.8;font-size:12px;margin-top:6px">${hint}</div>`;
+    }
+
+    el.innerHTML = content;
+    if (dot) el.appendChild(dot);
   }
 
   async function fetchPrices() {
-    const box = ensureBox();
+    const el = ensureStatusBox();
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
 
       if (data.error) {
-        box.innerHTML = `<div style="color:red">❌ ${data.error}</div>`;
+        setStatus("❌ Error fetching prices", data.error, "red");
         return;
       }
 
+      // Build rows with color highlight (green ↑ red ↓ gray same)
       const rows = data.prices
-        .map(
-          p => `
-          <div style="display:flex;justify-content:space-between;margin:2px 0">
-            <span style="color:#fbbf24;font-weight:bold">${p.symbol}</span>
-            <span>${parseFloat(p.price).toFixed(4)}</span>
-          </div>`
-        )
+        .map(p => {
+          const symbol = p.symbol;
+          const price = parseFloat(p.price);
+          let color = "white";
+
+          if (lastPrices[symbol]) {
+            if (price > lastPrices[symbol]) color = "limegreen";
+            else if (price < lastPrices[symbol]) color = "red";
+          }
+          lastPrices[symbol] = price;
+
+          return `
+            <div style="display:flex;justify-content:space-between;margin:2px 0">
+              <span style="color:#fbbf24;font-weight:bold">${symbol}</span>
+              <span style="color:${color}">${price.toFixed(4)}</span>
+            </div>`;
+        })
         .join("");
 
-      box.innerHTML = `
-        <div style="margin-bottom:6px;font-weight:bold;color:#38bdf8">📈 Live Prices</div>
+      el.innerHTML = `
+        <div>✅ Prices loaded (${data.count})</div>
+        <div style="opacity:0.8;font-size:12px;margin:6px 0">via ${data.base}</div>
         ${rows}
-        <div style="margin-top:6px;font-size:11px;opacity:0.7">via ${data.base}</div>
       `;
+
+      const dot = document.getElementById("qb-status-dot");
+      if (dot) {
+        dot.style.background = "limegreen";
+        el.appendChild(dot);
+      }
     } catch (err) {
-      box.innerHTML = `<div style="color:orange">⚠ Failed to fetch</div>`;
+      setStatus("⚠ Failed to fetch prices", err.message, "orange");
     }
   }
 
-  // Run
+  // Initial + interval refresh
   fetchPrices();
   setInterval(fetchPrices, REFRESH_INTERVAL);
 })();
 </script>
+
