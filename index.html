@@ -186,76 +186,22 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 <script>
 (function () {
-  const API_URL = "https://api-server-rg0h.onrender.com/prices"; // 👉 ilisi kung imo server URL
+  const API_URL = "https://api-server-rg0h.onrender.com/prices"; // imo proxy server
   const REFRESH_INTERVAL = 5000;
   let lastPrices = {};
 
-  function ensureStatusBox() {
-    let el = document.getElementById("qb-status-box");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "qb-status-box";
-      Object.assign(el.style, {
-        position: "fixed",
-        right: "12px",
-        bottom: "12px",
-        background: "rgba(0,0,0,0.75)",
-        color: "white",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        fontSize: "13px",
-        zIndex: 99999,
-        maxWidth: "360px",
-        maxHeight: "400px",
-        overflowY: "auto",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.3)",
-        fontFamily: "Arial, sans-serif"
-      });
-      document.body.appendChild(el);
+  function renderBox(status, prices = [], base = "") {
+    const el = document.getElementById("qb-status-box");
+    if (!el) return;
 
-      const dot = document.createElement("div");
-      dot.id = "qb-status-dot";
-      Object.assign(dot.style, {
-        width: "12px",
-        height: "12px",
-        borderRadius: "50%",
-        background: "gray",
-        position: "absolute",
-        top: "8px",
-        right: "8px"
-      });
-      el.appendChild(dot);
-    }
-    return el;
-  }
+    // Status message
+    let statusColor = "#fbbf24"; // yellow
+    if (status === "Connected") statusColor = "limegreen";
+    if (status === "Error") statusColor = "red";
 
-  function setStatus(text, hint, color) {
-    const el = ensureStatusBox();
-    const dot = document.getElementById("qb-status-dot");
-    if (dot && color) dot.style.background = color;
-
-    let content = `<div>${text}</div>`;
-    if (hint) {
-      content += `<div style="opacity:0.8;font-size:12px;margin-top:6px">${hint}</div>`;
-    }
-
-    el.innerHTML = content;
-    if (dot) el.appendChild(dot);
-  }
-
-  async function fetchPrices() {
-    const el = ensureStatusBox();
-    try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
-
-      if (data.error) {
-        setStatus("❌ Error fetching prices", data.error, "red");
-        return;
-      }
-
-      // Build rows with color highlight (green ↑ red ↓ gray same)
-      const rows = data.prices
+    let rows = "";
+    if (prices.length > 0) {
+      rows = prices
         .map(p => {
           const symbol = p.symbol;
           const price = parseFloat(p.price);
@@ -268,32 +214,46 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
           lastPrices[symbol] = price;
 
           return `
-            <div style="display:flex;justify-content:space-between;margin:2px 0">
+            <div style="display:flex;justify-content:space-between;margin:1px 0">
               <span style="color:#fbbf24;font-weight:bold">${symbol}</span>
               <span style="color:${color}">${price.toFixed(4)}</span>
             </div>`;
         })
         .join("");
+    }
 
-      el.innerHTML = `
-        <div>✅ Prices loaded (${data.count})</div>
-        <div style="opacity:0.8;font-size:12px;margin:6px 0">via ${data.base}</div>
-        ${rows}
-      `;
+    el.innerHTML = `
+      <div style="font-weight:bold;color:${statusColor};margin-bottom:6px">
+        ${status} ${base ? `— <span style="font-size:11px;opacity:0.7">${base}</span>` : ""}
+      </div>
+      ${rows || `<div style="font-size:12px;opacity:0.6">No prices loaded...</div>`}
+    `;
 
-      const dot = document.getElementById("qb-status-dot");
-      if (dot) {
-        dot.style.background = "limegreen";
-        el.appendChild(dot);
+    // dot status
+    const dot = document.getElementById("qb-status-dot");
+    if (dot) dot.style.background = statusColor;
+  }
+
+  async function fetchPrices() {
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+
+      if (data.error) {
+        renderBox("Error");
+        return;
       }
+
+      renderBox("Connected", data.prices, data.base);
     } catch (err) {
-      setStatus("⚠ Failed to fetch prices", err.message, "orange");
+      renderBox("Error");
     }
   }
 
-  // Initial + interval refresh
-  fetchPrices();
+  // Start loop
   setInterval(fetchPrices, REFRESH_INTERVAL);
+  fetchPrices();
 })();
 </script>
+
 
