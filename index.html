@@ -186,73 +186,44 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 <script>
 (function () {
-  const API_URL = "https://api-server-rg0h.onrender.com/prices"; // imo proxy server
-  const REFRESH_INTERVAL = 5000;
-  let lastPrices = {};
+  const API_SERVER = "https://api-server-rg0h.onrender.com";
+  const _oldFetch = window.fetch;
 
-  function renderBox(status, prices = [], base = "") {
-    const el = document.getElementById("qb-status-box");
-    if (!el) return;
+  // List of Binance endpoints we want to relay
+  const relayEndpoints = [
+    "/api/v3/ticker/price",
+    "/api/v3/exchangeInfo",
+    "/api/v3/depth",
+    "/api/v3/klines",
+    "/api/v3/ping"
+  ];
 
-    // Status message
-    let statusColor = "#fbbf24"; // yellow
-    if (status === "Connected") statusColor = "limegreen";
-    if (status === "Error") statusColor = "red";
-
-    let rows = "";
-    if (prices.length > 0) {
-      rows = prices
-        .map(p => {
-          const symbol = p.symbol;
-          const price = parseFloat(p.price);
-          let color = "white";
-
-          if (lastPrices[symbol]) {
-            if (price > lastPrices[symbol]) color = "limegreen";
-            else if (price < lastPrices[symbol]) color = "red";
-          }
-          lastPrices[symbol] = price;
-
-          return `
-            <div style="display:flex;justify-content:space-between;margin:1px 0">
-              <span style="color:#fbbf24;font-weight:bold">${symbol}</span>
-              <span style="color:${color}">${price.toFixed(4)}</span>
-            </div>`;
-        })
-        .join("");
-    }
-
-    el.innerHTML = `
-      <div style="font-weight:bold;color:${statusColor};margin-bottom:6px">
-        ${status} ${base ? `— <span style="font-size:11px;opacity:0.7">${base}</span>` : ""}
-      </div>
-      ${rows || `<div style="font-size:12px;opacity:0.6">No prices loaded...</div>`}
-    `;
-
-    // dot status
-    const dot = document.getElementById("qb-status-dot");
-    if (dot) dot.style.background = statusColor;
-  }
-
-  async function fetchPrices() {
+  // Override fetch
+  window.fetch = async function (url, options) {
     try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
+      if (typeof url === "string") {
+        const match = relayEndpoints.find(e => url.includes(e));
+        if (match) {
+          console.log("🔄 Relayed fetch →", match);
 
-      if (data.error) {
-        renderBox("Error");
-        return;
+          // Map Binance endpoint → proxy endpoint
+          const proxiedUrl = url.replace(
+            /^https:\/\/api\.binance\.com/,
+            API_SERVER
+          );
+
+          const res = await _oldFetch(proxiedUrl, options);
+          return res;
+        }
       }
 
-      renderBox("Connected", data.prices, data.base);
+      // Fallback to normal fetch
+      return _oldFetch(url, options);
     } catch (err) {
-      renderBox("Error");
+      console.error("❌ Relay error:", err.message);
+      throw err;
     }
-  }
-
-  // Start loop
-  setInterval(fetchPrices, REFRESH_INTERVAL);
-  fetchPrices();
+  };
 })();
 </script>
 
