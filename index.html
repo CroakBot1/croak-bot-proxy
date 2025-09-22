@@ -279,3 +279,167 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
   If the bot doesn’t work on your device, use a VPN or install the Tor browser and run it there.
   <button onclick="document.getElementById('bot-warning-banner').style.display='none'">Close</button>
 </div>
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Floating How-to-Use Button + Enhanced Guide Overlay -->
+<style>
+  /* Floating button */
+  #howToBtn {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 99999;
+    background: linear-gradient(135deg,#00c6ff,#0072ff);
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    transition: 0.2s;
+  }
+  #howToBtn:hover {
+    transform: scale(1.05);
+  }
+
+  /* Overlay */
+  #guideOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 99998;
+    padding: 40px 20px;
+    overflow-y: auto;
+  }
+
+  /* Card */
+  #guideCard {
+    background: #ffffff;
+    max-width: 760px;
+    margin: auto;
+    padding: 28px 32px;
+    border-radius: 14px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #1f2937;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    line-height: 1.6;
+  }
+  #guideCard h2 {
+    margin-top: 0;
+    font-size: 26px;
+    color: #0072ff;
+  }
+  #closeGuide {
+    background: transparent;
+    border: none;
+    float: right;
+    font-size: 22px;
+    cursor: pointer;
+    color: #6b7280;
+  }
+
+  /* Steps */
+  .step {
+    margin-bottom: 20px;
+    padding: 16px 18px;
+    background: #f0f7ff;
+    border-left: 6px solid #0072ff;
+    border-radius: 10px;
+  }
+  .step strong {
+    display: block;
+    font-size: 19px;
+    margin-bottom: 8px;
+    color: #0072ff;
+  }
+  .step ul {
+    margin: 6px 0 0 22px;
+    padding: 0;
+  }
+  .step ul li {
+    margin-bottom: 6px;
+  }
+</style>
+
+<button id="howToBtn">How to Use</button>
+
+<div id="guideOverlay">
+  <div id="guideCard">
+    <button id="closeGuide">✕</button>
+    <h2>How to Use Bot 1</h2>
+
+    <div class="step">
+      <strong>Step 1: Select a Trading Pair</strong>
+      Start by choosing which cryptocurrency pair you want to analyze.  
+      <ul>
+        <li>Example: <code>ETHUSDT</code> for Ethereum vs. USDT</li>
+        <li>Or: <code>BTCUSDT</code> for Bitcoin vs. USDT</li>
+      </ul>
+      ✅ This defines which market the bot will track and score.
+    </div>
+
+    <div class="step">
+      <strong>Step 2: Choose Your Timeframe</strong>
+      Decide how long you want each candle to represent:  
+      <ul>
+        <li><b>Scalping</b> → Use short frames (1m, 5m, 15m) for quick trades.</li>
+        <li><b>Day Trading</b> → Use longer frames (1h, 4h, 1d) for more stable signals.</li>
+      </ul>
+      ⚡ Tip: Shorter timeframes = faster signals, but more noise.  
+      Longer timeframes = slower, but more reliable.
+    </div>
+
+    <div class="step">
+      <strong>Step 3: Preload Candles</strong>
+      Click the <b>Preload</b> button to load historical candles.  
+      This gives the bot enough data to calculate accurate signals and prepare the score system.
+    </div>
+
+    <div class="step">
+      <strong>Step 4: Start the WebSocket</strong>
+      After preloading, click <b>WebSocket</b> to enable live updates.  
+      📊 The bot will begin streaming real-time scores at the top of the page.
+    </div>
+
+    <div class="step">
+      <strong>Step 5: Interpret the Score</strong>
+      Use the score as your trading guide:  
+      <ul>
+        <li><b>Below 60</b> → Weak signal (avoid or be cautious).</li>
+        <li><b>60 – 80</b> → Decent signal (possible entry point).</li>
+        <li><b>80 – 99</b> → Strong signal (higher probability setup).</li>
+        <li><b>100</b> → Excellent / strongest signal.</li>
+      </ul>
+      🚀 The higher the score, the stronger the trading setup.
+    </div>
+  </div>
+</div>
+
+<script>
+  const btn = document.getElementById('howToBtn');
+  const overlay = document.getElementById('guideOverlay');
+  const closeBtn = document.getElementById('closeGuide');
+
+  btn.addEventListener('click', () => {
+    overlay.style.display = 'block';
+  });
+  closeBtn.addEventListener('click', () => {
+    overlay.style.display = 'none';
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.style.display = 'none';
+  });
+</script>
