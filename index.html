@@ -286,3 +286,63 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
     if (e.target === overlay) overlay.style.display = 'none';
   });
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ====== Add-on: Bullish vs Bearish Line ======
+
+// create bar container
+const barBox = document.createElement("div");
+barBox.id = "bullBearBar";
+barBox.style.cssText = `
+  width:100%;
+  height:8px;
+  background:#222;
+  margin:8px 0;
+  border-radius:4px;
+  overflow:hidden;
+  position:relative;
+`;
+const barFill = document.createElement("div");
+barFill.style.cssText = `
+  height:100%;
+  width:50%;
+  background:linear-gradient(90deg, var(--bad), var(--good));
+  transition:width 0.3s ease;
+`;
+barBox.appendChild(barFill);
+
+// inject sa taas sa output panel
+document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
+
+// override updateTotalScore to also update line
+const _updateTotalScore = updateTotalScore;
+updateTotalScore = function(){
+  const total = _updateTotalScore();
+  if(total!=null){
+    // scale 0–100 → 0–100% width
+    barFill.style.width = total + "%";
+    // optional text label center
+    barBox.setAttribute("title", (total>=50?"Bullish ":"Bearish ") + total.toFixed(0));
+  }
+  return total;
+};
+</script>
