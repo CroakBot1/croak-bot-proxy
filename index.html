@@ -307,42 +307,65 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 <script>
-// ====== Add-on: Bullish vs Bearish Line ======
+// ====== Add-on: Bearish vs Bullish Bar ======
 
-// create bar container
 const barBox = document.createElement("div");
 barBox.id = "bullBearBar";
 barBox.style.cssText = `
   width:100%;
-  height:8px;
+  height:14px;
   background:#222;
   margin:8px 0;
   border-radius:4px;
   overflow:hidden;
   position:relative;
 `;
+
+// fill bar
 const barFill = document.createElement("div");
 barFill.style.cssText = `
   height:100%;
-  width:50%;
-  background:linear-gradient(90deg, var(--bad), var(--good));
-  transition:width 0.3s ease;
+  width:0%;
+  background:#f00; /* default red */
+  transition:width 0.3s ease, background 0.3s ease;
 `;
-barBox.appendChild(barFill);
 
-// inject sa taas sa output panel
+// center marker (threshold 60)
+const centerLine = document.createElement("div");
+centerLine.style.cssText = `
+  position:absolute;
+  left:60%;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:#fff;
+  opacity:0.8;
+`;
+
+barBox.appendChild(barFill);
+barBox.appendChild(centerLine);
+
+// inject before output
 document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
 
-// override updateTotalScore to also update line
+// override updateTotalScore
 const _updateTotalScore = updateTotalScore;
 updateTotalScore = function(){
   const total = _updateTotalScore();
   if(total!=null){
-    // scale 0–100 → 0–100% width
+    // adjust width
     barFill.style.width = total + "%";
-    // optional text label center
-    barBox.setAttribute("title", (total>=50?"Bullish ":"Bearish ") + total.toFixed(0));
+
+    // change color based on threshold
+    if(total < 60){
+      barFill.style.background = "#e63946"; // bearish red
+      barBox.setAttribute("title", "Bearish " + total.toFixed(0));
+    } else {
+      barFill.style.background = "#06d6a0"; // bullish green
+      barBox.setAttribute("title", "Bullish " + total.toFixed(0));
+    }
   }
   return total;
 };
 </script>
+
