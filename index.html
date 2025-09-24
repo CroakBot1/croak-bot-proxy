@@ -330,7 +330,7 @@ barFill.style.cssText = `
   transition:width 0.3s ease, background 0.3s ease;
 `;
 
-// center marker (threshold 60)
+// center marker line (60%)
 const centerLine = document.createElement("div");
 centerLine.style.cssText = `
   position:absolute;
@@ -339,7 +339,22 @@ centerLine.style.cssText = `
   bottom:0;
   width:2px;
   background:#fff;
-  opacity:0.8;
+  opacity:0.5;
+`;
+
+// circle marker at 60
+const centerDrop = document.createElement("div");
+centerDrop.style.cssText = `
+  position:absolute;
+  left:60%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, #fff, #ccc);
+  border:2px solid #000;
+  box-shadow:0 0 6px rgba(255,255,255,0.7);
 `;
 
 // labels
@@ -369,13 +384,14 @@ rightLabel.style.cssText = `
 
 barBox.appendChild(barFill);
 barBox.appendChild(centerLine);
+barBox.appendChild(centerDrop);
 barBox.appendChild(leftLabel);
 barBox.appendChild(rightLabel);
 
 // inject before output
 document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
 
-// fakeout alert box
+// fakeout alert
 const alertBox = document.createElement("div");
 alertBox.style.cssText = `
   margin:6px 0;
@@ -387,7 +403,7 @@ alertBox.style.cssText = `
   font-weight:bold;
   display:none;
 `;
-alertBox.textContent = "⚠️ Fake outs, don't enter the market.";
+alertBox.textContent = "⚠️ Fake outs detected, don't enter the market!";
 barBox.insertAdjacentElement("afterend", alertBox);
 
 // override updateTotalScore
@@ -408,11 +424,9 @@ updateTotalScore = function(){
       barBox.setAttribute("title", "Bullish " + total.toFixed(0));
     }
 
-    // detect fakeout: from >=80 to <60
+    // fakeout: from >=80 then drop <60
     if(prevScore !== null && prevScore >= 80 && total < 60){
       alertBox.style.display = "block";
-    } else {
-      alertBox.style.display = "none";
     }
 
     prevScore = total;
@@ -420,5 +434,6 @@ updateTotalScore = function(){
   return total;
 };
 </script>
+
 
 
