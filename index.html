@@ -307,20 +307,21 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 <script>
-// ====== Add-on: Bearish vs Bullish Market Dynamics + History Chart ======
+// ====== Add-on: Ultra Detailed Bearish vs Bullish Market Analyzer ======
 
 // main bar
 const barBox = document.createElement("div");
 barBox.id = "bullBearBar";
 barBox.style.cssText = `
   width:100%;
-  height:30px;
+  height:32px;
   background:#111;
-  margin:12px 0;
-  border-radius:8px;
+  margin:14px 0;
+  border-radius:10px;
   overflow:hidden;
   position:relative;
   box-shadow:inset 0 0 8px rgba(0,0,0,0.6);
+  transition:box-shadow 0.6s ease;
 `;
 
 // fill
@@ -439,45 +440,135 @@ chartWrap.appendChild(canvas);
 guideBox.insertAdjacentElement("afterend", chartWrap);
 const ctx = canvas.getContext("2d");
 
+// event log
+const logBox = document.createElement("div");
+logBox.style.cssText = `
+  max-height:120px;
+  overflow-y:auto;
+  background:#121212;
+  color:#ccc;
+  padding:6px;
+  font-size:11px;
+  border-radius:6px;
+  margin:10px 0;
+`;
+chartWrap.insertAdjacentElement("afterend", logBox);
+
 // sound
 const beepSound = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAAA=');
 
 // vars
 let prevScore = null, prevTime = null;
-let history = [], maxHistory = 50;
+let history = [], maxHistory = 100;
+
+// helpers
+function movingAverage(arr,len){
+  if(arr.length < len) return null;
+  let slice = arr.slice(-len);
+  return slice.reduce((a,b)=>a+b,0)/len;
+}
+function addLog(msg){
+  const time = new Date().toLocaleTimeString();
+  const line = document.createElement("div");
+  line.innerHTML = `<span style="color:#888">[${time}]</span> ${msg}`;
+  logBox.prepend(line);
+}
+function showAlert(msg,color){
+  alertBox.style.display="block";
+  alertBox.style.background=color;
+  alertBox.innerHTML=msg;
+  beepSound.play();
+  addLog(msg.replace(/<[^>]+>/g,'')); // strip html tags for log
+}
 
 // analyzer
 function analyzeMarket(total,diff,speed){
   history.push(total);
   if(history.length>maxHistory) history.shift();
+
   let maxVal=Math.max(...history), minVal=Math.min(...history), range=maxVal-minVal;
   let summary=[];
-  summary.push(total>=60?"Bullish":"Bearish");
-  if(speed>2) summary.push("Rising fast");
-  else if(speed>0.5) summary.push("Slow climb");
-  else if(speed<-2) summary.push("Dropping fast");
-  else if(speed<-0.5) summary.push("Slow fall");
-  else summary.push("Flat");
-  if(range>25) summary.push("⚡ High Volatility");
+
+  // bias
+  summary.push(total>=60?"🐂 Bullish Bias":"🐻 Bearish Bias");
+
+  // momentum
+  if(speed>2) summary.push("⚡ Strong Up Momentum");
+  else if(speed>0.5) summary.push("↗ Slow Climb");
+  else if(speed<-2) summary.push("⚠️ Strong Down Momentum");
+  else if(speed<-0.5) summary.push("↘ Slow Fall");
+  else summary.push("⏸ Flat");
+
+  // volatility
+  if(range>25) summary.push("🔥 High Volatility");
   else if(range<8) summary.push("💤 Low Volatility");
   else summary.push("Normal Volatility");
+
+  // trend check (multi-timeframe)
+  let shortMA = movingAverage(history,10);
+  let longMA  = movingAverage(history,30);
+  if(shortMA && longMA){
+    if(shortMA>longMA) summary.push("📈 Trend: Up");
+    else if(shortMA<longMA) summary.push("📉 Trend: Down");
+    else summary.push("➡ Side Trend");
+  }
+
+  // overbought / oversold
+  if(total>85) summary.push("⚠️ Overbought Zone");
+  else if(total<20) summary.push("⚠️ Oversold Zone");
+
+  // risk level
+  if(range>30 || Math.abs(speed)>3) summary.push("🔴 High Risk");
+  else if(range>15) summary.push("🟡 Medium Risk");
+  else summary.push("🟢 Low Risk");
+
   return summary.join(" • ");
 }
 
 // draw chart
-function drawChart(){
+function drawChart(speed){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle="#0f0"; ctx.beginPath();
+
   let step=canvas.width/(maxHistory-1);
+
+  // raw line
+  ctx.strokeStyle="#0f0"; ctx.beginPath();
   history.forEach((val,i)=>{
     let x=i*step, y=canvas.height-(val/100*canvas.height);
     if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
   });
   ctx.stroke();
+
+  // moving average line
+  let maVals = history.map((_,i)=>movingAverage(history.slice(0,i+1),10));
+  ctx.strokeStyle="#ff0"; ctx.beginPath();
+  maVals.forEach((val,i)=>{
+    if(val!==null){
+      let x=i*step, y=canvas.height-(val/100*canvas.height);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+  });
+  ctx.stroke();
+
+  // axis line 60%
   ctx.strokeStyle="rgba(255,255,255,0.3)";
   ctx.beginPath();
   let y60=canvas.height-(60/100*canvas.height);
   ctx.moveTo(0,y60); ctx.lineTo(canvas.width,y60); ctx.stroke();
+
+  // forecast arrow
+  let latest=history[history.length-1];
+  if(latest && speed){
+    let arrowX=canvas.width-20;
+    let arrowY=canvas.height-(latest/100*canvas.height);
+    ctx.fillStyle=speed>0?"#0f0":"#f00";
+    ctx.beginPath();
+    ctx.moveTo(arrowX,arrowY);
+    ctx.lineTo(arrowX+10,arrowY+(speed>0?-8:8));
+    ctx.lineTo(arrowX-10,arrowY+(speed>0?-8:8));
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 // hook
@@ -491,6 +582,11 @@ updateTotalScore=function(){
     scoreText.textContent=total.toFixed(0)+"%";
     needle.style.left=total+"%";
 
+    // glow effect
+    if(total>80) barBox.style.boxShadow="0 0 12px #0f0";
+    else if(total<30) barBox.style.boxShadow="0 0 12px #f00";
+    else barBox.style.boxShadow="inset 0 0 8px rgba(0,0,0,0.6)";
+
     // status
     if(total<40) statusText.innerHTML="🔴 "+total.toFixed(0)+"% → <span style='color:#ff4d4d'>Deep Bearish</span>";
     else if(total<60) statusText.innerHTML="📉 "+total.toFixed(0)+"% → <span style='color:#ff6666'>Bearish</span>";
@@ -501,36 +597,30 @@ updateTotalScore=function(){
       const diff=total-prevScore, dt=(now-prevTime)/1000, speed=diff/dt;
 
       // dump / rally / sideways
-      if(diff<=-15){ alertBox.style.display="block";alertBox.style.background="#d32f2f";alertBox.innerHTML="📉 <b>Dump Alert!</b><br>"+diff.toFixed(0)+"% fast drop";beepSound.play();}
-      else if(diff>=15){ alertBox.style.display="block";alertBox.style.background="#2e7d32";alertBox.innerHTML="🚀 <b>Rally Alert!</b><br>"+diff.toFixed(0)+"% surge";beepSound.play();}
-      else if(Math.abs(diff)<5 && total>40 && total<80){ alertBox.style.display="block";alertBox.style.background="#0288d1";alertBox.innerHTML="🔄 <b>Sideways Market</b>";}
+      if(diff<=-15){ showAlert("📉 <b>Dump Alert!</b><br>"+diff.toFixed(0)+"% fast drop","#d32f2f");}
+      else if(diff>=15){ showAlert("🚀 <b>Rally Alert!</b><br>"+diff.toFixed(0)+"% surge","#2e7d32");}
+      else if(Math.abs(diff)<5 && total>40 && total<80){ showAlert("🔄 <b>Sideways Market</b>","#0288d1");}
       else alertBox.style.display="none";
 
-      // cross logic
-      if(prevScore<60 && total>=60){
-        alertBox.style.display="block";alertBox.style.background="#4caf50";
-        alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bearish → Bullish";beepSound.play();
-      }
+      // cross logic + fakeouts
+      if(prevScore<60 && total>=60){ showAlert("🔄 <b>Reversal!</b><br>Bearish → Bullish","#4caf50");}
       else if(prevScore>=60 && total<60){
-        if(prevScore>=70){
-          alertBox.style.display="block";alertBox.style.background="#ff9800";
-          alertBox.innerHTML="⚠️ <b>Fakeout!</b><br>Sharp drop below 60 after bullish run";beepSound.play();
-        }else{
-          alertBox.style.display="block";alertBox.style.background="#f44336";
-          alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bullish → Bearish";beepSound.play();
-        }
+        if(prevScore>=70){ showAlert("⚠️ <b>Bull Trap!</b><br>Fakeout drop below 60","#ff9800");}
+        else{ showAlert("🔄 <b>Reversal!</b><br>Bullish → Bearish","#f44336");}
       }
+      if(prevScore<=40 && total>60){ showAlert("⚠️ <b>Bear Trap!</b><br>Sharp recovery above 60","#00bcd4");}
 
       // summary update
       guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,diff,speed);
-    }
 
-    drawChart();
+      drawChart(speed);
+    }
     prevScore=total; prevTime=now;
   }
   return total;
 };
 </script>
+
 
 
 
