@@ -307,30 +307,44 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 <script>
-// ====== Add-on: Bearish vs Bullish Bar ======
+// ====== Add-on: Bearish vs Bullish Market Dynamics + History Chart ======
 
 const barBox = document.createElement("div");
 barBox.id = "bullBearBar";
 barBox.style.cssText = `
   width:100%;
-  height:18px;
-  background:#222;
-  margin:8px 0;
-  border-radius:4px;
+  height:30px;
+  background:#111;
+  margin:12px 0;
+  border-radius:8px;
   overflow:hidden;
   position:relative;
+  box-shadow:inset 0 0 8px rgba(0,0,0,0.6);
 `;
 
-// fill bar
+// bar fill
 const barFill = document.createElement("div");
 barFill.style.cssText = `
   height:100%;
   width:0%;
-  background:#f00; /* default red */
-  transition:width 0.3s ease, background 0.3s ease;
+  background:linear-gradient(90deg,#b71c1c,#ff4d4d,#06d6a0,#1b5e20);
+  transition:width 0.8s cubic-bezier(0.4,0,0.2,1);
 `;
 
-// center marker line (60%)
+// score text
+const scoreText = document.createElement("div");
+scoreText.style.cssText = `
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:13px;
+  font-weight:bold;
+  color:#fff;
+  text-shadow:1px 1px 2px #000;
+`;
+
+// marker at 60
 const centerLine = document.createElement("div");
 centerLine.style.cssText = `
   position:absolute;
@@ -339,10 +353,8 @@ centerLine.style.cssText = `
   bottom:0;
   width:2px;
   background:#fff;
-  opacity:0.5;
+  opacity:0.6;
 `;
-
-// circle marker at 60
 const centerDrop = document.createElement("div");
 centerDrop.style.cssText = `
   position:absolute;
@@ -354,12 +366,12 @@ centerDrop.style.cssText = `
   border-radius:50%;
   background:radial-gradient(circle at 30% 30%, #fff, #ccc);
   border:2px solid #000;
-  box-shadow:0 0 6px rgba(255,255,255,0.7);
+  box-shadow:0 0 8px rgba(255,255,255,0.8);
 `;
 
 // labels
 const leftLabel = document.createElement("span");
-leftLabel.textContent = "Bearish";
+leftLabel.textContent = "🐻 Bearish";
 leftLabel.style.cssText = `
   position:absolute;
   left:6px;
@@ -369,9 +381,8 @@ leftLabel.style.cssText = `
   color:#ff4d4d;
   font-weight:bold;
 `;
-
 const rightLabel = document.createElement("span");
-rightLabel.textContent = "Bullish";
+rightLabel.textContent = "Bullish 🐂";
 rightLabel.style.cssText = `
   position:absolute;
   right:6px;
@@ -382,16 +393,34 @@ rightLabel.style.cssText = `
   font-weight:bold;
 `;
 
+// needle
+const needle = document.createElement("div");
+needle.style.cssText = `
+  position:absolute;
+  top:-6px;
+  width:0;
+  height:0;
+  border-left:6px solid transparent;
+  border-right:6px solid transparent;
+  border-bottom:8px solid yellow;
+  transition:left 0.6s ease;
+`;
+
 barBox.appendChild(barFill);
+barBox.appendChild(scoreText);
 barBox.appendChild(centerLine);
 barBox.appendChild(centerDrop);
 barBox.appendChild(leftLabel);
 barBox.appendChild(rightLabel);
+barBox.appendChild(needle);
 
-// inject before output
 document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
 
-// fakeout alert box
+// status + alerts
+const statusText = document.createElement("div");
+statusText.style.cssText = `margin:6px 0;font-size:13px;font-weight:bold;color:#ccc;`;
+barBox.insertAdjacentElement("afterend", statusText);
+
 const alertBox = document.createElement("div");
 alertBox.style.cssText = `
   margin:8px 0;
@@ -402,10 +431,12 @@ alertBox.style.cssText = `
   font-size:14px;
   font-weight:bold;
   display:none;
-  animation: pulse 1.5s infinite;
+  animation:pulse 1.5s infinite;
 `;
+alertBox.innerHTML = "⚠️ Market Alert";
+statusText.insertAdjacentElement("afterend", alertBox);
 
-// add pulse animation
+// style
 const styleEl = document.createElement("style");
 styleEl.textContent = `
 @keyframes pulse {
@@ -415,42 +446,119 @@ styleEl.textContent = `
 }`;
 document.head.appendChild(styleEl);
 
-alertBox.innerHTML = "⚠️ <b>Fakeout detected!</b><br>Price dropped below bullish zone (60). Be cautious — this may trap traders. Avoid entering now.";
-barBox.insertAdjacentElement("afterend", alertBox);
+// summary
+const guideBox = document.createElement("div");
+guideBox.style.cssText = `margin:12px 0;padding:10px;border-radius:6px;background:#1e1e1e;color:#ccc;font-size:12px;line-height:1.6;`;
+guideBox.innerHTML = "<b>📊 Market Summary:</b><br>Waiting for data...";
+alertBox.insertAdjacentElement("afterend", guideBox);
 
-// override updateTotalScore
-let prevScore = null;
+// chart container
+const chartWrap = document.createElement("div");
+chartWrap.style.cssText = `margin:12px 0;background:#000;padding:8px;border-radius:6px;`;
+const canvas = document.createElement("canvas");
+canvas.width = 500;
+canvas.height = 100;
+chartWrap.appendChild(canvas);
+guideBox.insertAdjacentElement("afterend", chartWrap);
+const ctx = canvas.getContext("2d");
+
+// sound
+const beepSound = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAAA=');
+
+// vars
+let prevScore = null, prevTime = null;
+let history = [], maxHistory = 50;
+
+// analyzer
+function analyzeMarket(total, diff, speed){
+  history.push(total);
+  if(history.length>maxHistory) history.shift();
+
+  let maxVal = Math.max(...history);
+  let minVal = Math.min(...history);
+  let range = maxVal-minVal;
+  let summary=[];
+
+  summary.push(total>=60?"Bullish":"Bearish");
+  if(speed>2) summary.push("Rising fast");
+  else if(speed>0.5) summary.push("Slow climb");
+  else if(speed<-2) summary.push("Dropping fast");
+  else if(speed<-0.5) summary.push("Slow fall");
+  else summary.push("Flat");
+
+  if(range>25) summary.push("⚡ High Volatility");
+  else if(range<8) summary.push("💤 Low Volatility");
+  else summary.push("Normal Volatility");
+
+  return summary.join(" • ");
+}
+
+// draw chart
+function drawChart(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="#0f0";
+  ctx.beginPath();
+  let step=canvas.width/(maxHistory-1);
+  history.forEach((val,i)=>{
+    let x=i*step;
+    let y=canvas.height-(val/100*canvas.height);
+    if(i===0) ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // axis line 60%
+  ctx.strokeStyle="rgba(255,255,255,0.3)";
+  ctx.beginPath();
+  let y60=canvas.height-(60/100*canvas.height);
+  ctx.moveTo(0,y60); ctx.lineTo(canvas.width,y60);
+  ctx.stroke();
+}
+
+// hook
 const _updateTotalScore = updateTotalScore;
-updateTotalScore = function(){
-  const total = _updateTotalScore();
+updateTotalScore=function(){
+  const total=_updateTotalScore();
+  const now=Date.now();
+
   if(total!=null){
-    // adjust width
-    barFill.style.width = total + "%";
+    barFill.style.width=total+"%";
+    scoreText.textContent=total.toFixed(0)+"%";
+    needle.style.left=total+"%";
 
-    // change color based on threshold
-    if(total < 60){
-      barFill.style.background = "#e63946"; // bearish red
-      barBox.setAttribute("title", "Bearish " + total.toFixed(0));
-    } else {
-      barFill.style.background = "#06d6a0"; // bullish green
-      barBox.setAttribute("title", "Bullish " + total.toFixed(0));
+    // status
+    if(total<40) statusText.innerHTML="🔴 "+total.toFixed(0)+"% → <span style='color:#ff4d4d'>Deep Bearish</span>. Sellers rule.";
+    else if(total<60) statusText.innerHTML="📉 "+total.toFixed(0)+"% → <span style='color:#ff6666'>Bearish</span>. Weak buyers.";
+    else if(total<80) statusText.innerHTML="📈 "+total.toFixed(0)+"% → <span style='color:#00e676'>Bullish</span>. Buyers gaining.";
+    else statusText.innerHTML="🟢 "+total.toFixed(0)+"% → <span style='color:#00ff80'>Strong Bullish</span>. Buyers dominate.";
+
+    // movement
+    if(prevScore!==null&&prevTime!==null){
+      const diff=total-prevScore;
+      const dt=(now-prevTime)/1000;
+      const speed=diff/dt;
+
+      if(diff<=-15){ alertBox.style.display="block";alertBox.style.background="#d32f2f";alertBox.innerHTML="📉 <b>Dump Alert!</b><br>"+diff.toFixed(0)+"% fast drop";beepSound.play();}
+      else if(diff>=15){ alertBox.style.display="block";alertBox.style.background="#2e7d32";alertBox.innerHTML="🚀 <b>Rally Alert!</b><br>"+diff.toFixed(0)+"% surge";beepSound.play();}
+      else if(Math.abs(diff)<5 && total>40 && total<80){ alertBox.style.display="block";alertBox.style.background="#0288d1";alertBox.innerHTML="🔄 <b>Sideways Market</b>";}
+      else alertBox.style.display="none";
+
+      if(prevScore>=60&&total<60){ alertBox.style.display="block";alertBox.style.background="#ff9800";alertBox.innerHTML="⚠️ <b>Fakeout!</b><br>Dropped below 60";beepSound.play();}
+      if(prevScore<60&&total>=60){ alertBox.style.display="block";alertBox.style.background="#4caf50";alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bearish → Bullish";beepSound.play();}
+      if(prevScore>=60&&total<60){ alertBox.style.display="block";alertBox.style.background="#f44336";alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bullish → Bearish";beepSound.play();}
+
+      // update summary
+      let summary=analyzeMarket(total,diff,speed);
+      guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+summary;
     }
 
-    // fakeout: from >=60 then drop <60
-    if(prevScore !== null && prevScore >= 60 && total < 60){
-      alertBox.style.display = "block"; // show warning
-    }
-
-    // hide alert only when price returns bullish
-    if(total >= 60){
-      alertBox.style.display = "none";
-    }
-
-    prevScore = total;
+    drawChart();
+    prevScore=total; prevTime=now;
   }
   return total;
 };
 </script>
+
 
 
 
