@@ -310,8 +310,12 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 
+
+
+
+
 <script>
-// ====== Add-on: Full Bullish vs Bearish Analyzer + History & Traps ======
+// ====== Add-on: Full Bullish vs Bearish Analyzer + Enhanced Trap Detection ======
 
 // ==== MAIN BAR ====
 const barBox = document.createElement("div");
@@ -489,7 +493,7 @@ function analyzeMarket(total,diff,speed){
   if(total>85) summary.push("⚠️ Overbought Zone");
   else if(total<20) summary.push("⚠️ Oversold Zone");
 
-  return summary.join(" • ");
+  return { summary: summary.join(" • "), range };
 }
 
 // ==== DRAW CHART ====
@@ -540,9 +544,9 @@ updateTotalScore=function(){
     else if(total<80) statusText.innerHTML="📈 "+total.toFixed(0)+"% → <span style='color:#00e676'>Bullish</span>. Buyers gaining.";
     else statusText.innerHTML="🟢 "+total.toFixed(0)+"% → <span style='color:#00ff80'>Strong Bullish</span>. Buyers dominate.";
 
-    // movement detection
     if(prevScore!==null&&prevTime!==null){
       const diff=total-prevScore, dt=(now-prevTime)/1000, speed=diff/dt;
+      const { summary, range } = analyzeMarket(total,diff,speed);
 
       // alerts
       if(diff<=-15){ alertBox.style.display="block";alertBox.style.background="#d32f2f";alertBox.innerHTML="📉 <b>Dump Alert!</b><br>"+diff.toFixed(0)+"% fast drop";beepSound.play();}
@@ -556,21 +560,20 @@ updateTotalScore=function(){
         alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bearish → Bullish";beepSound.play();
       }
       else if(prevScore>=60 && total<60){
-        if(prevScore>=70){
+        if(prevScore>=70 && speed<-1.5 && range>20){
           alertBox.style.display="block";alertBox.style.background="#ff9800";
-          alertBox.innerHTML="⚠️ <b>Bull Trap!</b><br>Fakeout drop below 60";beepSound.play();
+          alertBox.innerHTML="⚠️ <b>Bull Trap!</b><br>Fakeout drop below 60 with strong reversal speed";beepSound.play();
         }else{
           alertBox.style.display="block";alertBox.style.background="#f44336";
           alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bullish → Bearish";beepSound.play();
         }
       }
-      if(prevScore<=40 && total>60){
+      if(prevScore<=40 && total>60 && speed>1.5 && range>20){
         alertBox.style.display="block";alertBox.style.background="#00bcd4";
-        alertBox.innerHTML="⚠️ <b>Bear Trap!</b><br>Sharp recovery above 60";beepSound.play();
+        alertBox.innerHTML="⚠️ <b>Bear Trap!</b><br>Sharp breakout above 60 with momentum";beepSound.play();
       }
 
-      // update summary
-      guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,diff,speed);
+      guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+summary;
     }
 
     drawChart();
@@ -579,8 +582,5 @@ updateTotalScore=function(){
   return total;
 };
 </script>
-
-
-
 
 
