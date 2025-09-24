@@ -391,19 +391,31 @@ barBox.appendChild(rightLabel);
 // inject before output
 document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
 
-// fakeout alert
+// fakeout alert box
 const alertBox = document.createElement("div");
 alertBox.style.cssText = `
-  margin:6px 0;
-  padding:6px 10px;
-  border-radius:6px;
-  background:#ffdd57;
-  color:#000;
-  font-size:13px;
+  margin:8px 0;
+  padding:10px 14px;
+  border-radius:8px;
+  background:#ff9800;
+  color:#fff;
+  font-size:14px;
   font-weight:bold;
   display:none;
+  animation: pulse 1.5s infinite;
 `;
-alertBox.textContent = "⚠️ Fake outs detected, don't enter the market!";
+
+// add pulse animation
+const styleEl = document.createElement("style");
+styleEl.textContent = `
+@keyframes pulse {
+  0% { box-shadow:0 0 0 0 rgba(255,152,0,0.7); }
+  70% { box-shadow:0 0 0 10px rgba(255,152,0,0); }
+  100% { box-shadow:0 0 0 0 rgba(255,152,0,0); }
+}`;
+document.head.appendChild(styleEl);
+
+alertBox.innerHTML = "⚠️ <b>Fakeout detected!</b><br>Price dropped below bullish zone (60). Be cautious — this may trap traders. Avoid entering now.";
 barBox.insertAdjacentElement("afterend", alertBox);
 
 // override updateTotalScore
@@ -426,8 +438,11 @@ updateTotalScore = function(){
 
     // fakeout: from >=60 then drop <60
     if(prevScore !== null && prevScore >= 60 && total < 60){
-      alertBox.style.display = "block";
-    } else {
+      alertBox.style.display = "block"; // show warning
+    }
+
+    // hide alert only when price returns bullish
+    if(total >= 60){
       alertBox.style.display = "none";
     }
 
@@ -436,6 +451,8 @@ updateTotalScore = function(){
   return total;
 };
 </script>
+
+
 
 
 
