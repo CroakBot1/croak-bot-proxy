@@ -424,9 +424,11 @@ updateTotalScore = function(){
       barBox.setAttribute("title", "Bullish " + total.toFixed(0));
     }
 
-    // fakeout: from >=80 then drop <60
-    if(prevScore !== null && prevScore >= 80 && total < 60){
+    // fakeout: from >=60 then drop <60
+    if(prevScore !== null && prevScore >= 60 && total < 60){
       alertBox.style.display = "block";
+    } else {
+      alertBox.style.display = "none";
     }
 
     prevScore = total;
@@ -434,6 +436,7 @@ updateTotalScore = function(){
   return total;
 };
 </script>
+
 
 
 
