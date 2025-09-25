@@ -1245,18 +1245,40 @@ function drawLegend(){
 
 
 
-<script>
-// ===================================================
-// 📱🖥️ Universal Auto Responsive Page Height & Width
-// (Works on All Devices - Mobile + Desktop)
-// ===================================================
-(function(){
+<!-- ==============================
+     🌐 Universal Responsive Page Fix
+     Works on All Browsers & Devices
+     ============================== -->
 
-  function adjustPage(){
+<!-- 1️⃣ Meta Viewport for Mobile Scaling -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<!-- 2️⃣ Universal CSS Reset / Responsive Body -->
+<style>
+  html, body {
+    width: 100%;
+    min-height: 100vh;      /* full screen height */
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;      /* hide horizontal scroll */
+    overflow-y: auto;        /* allow vertical scroll */
+  }
+
+  /* Optional: make images and videos responsive */
+  img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+</style>
+
+<!-- 3️⃣ JS Add-on for Dynamic Page Adjustment -->
+<script>
+(function() {
+  function adjustPage() {
     const html = document.documentElement;
     const body = document.body;
 
-    // Unlock flexible height & width para sa tanan device
     Object.assign(html.style, {
       width: "100%",
       height: "auto",
@@ -1270,14 +1292,14 @@ function drawLegend(){
       minHeight: "100vh",
       overflowX: "hidden",
       overflowY: "auto",
-      maxWidth: "100%"  // prevents cut-off sa tanan screens
+      maxWidth: "100%"
     });
   }
 
-  // run sa load
+  // Run on page load and resize
   window.addEventListener("load", adjustPage);
-  // run sa resize
   window.addEventListener("resize", adjustPage);
 })();
 </script>
+
 
