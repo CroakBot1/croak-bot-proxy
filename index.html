@@ -720,3 +720,110 @@ updateTotalScore=function(){
   return total;
 };
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ===================================================
+// 🤖 ADVANCED ANALYZER + AI-LIKE FORECAST
+// ===================================================
+
+// === FORECAST BOX ===
+const forecastBox = document.createElement("div");
+forecastBox.style.cssText = `
+  margin:12px 0;
+  padding:10px 14px;
+  border-radius:8px;
+  background:#222;
+  color:#fff;
+  font-size:13px;
+  line-height:1.5;
+  box-shadow:0 0 10px rgba(0,0,0,0.4);
+`;
+distWrap.insertAdjacentElement("afterend", forecastBox);
+
+// === FORECAST CONFIDENCE BAR ===
+const forecastBar = document.createElement("div");
+forecastBar.style.cssText = `
+  margin-top:8px;
+  width:100%;
+  height:16px;
+  background:#111;
+  border-radius:6px;
+  overflow:hidden;
+  position:relative;
+`;
+const forecastFill = document.createElement("div");
+forecastFill.style.cssText = `
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#ff4d4d,#ff9800,#00e676);
+  transition:width 0.8s ease;
+`;
+forecastBar.appendChild(forecastFill);
+forecastBox.appendChild(forecastBar);
+
+// === FORECAST FUNCTION ===
+function forecastNext(arr){
+  if(arr.length < 30) return {text:"📡 Collecting more data...", conf:0};
+
+  let stats = calcStats(arr);
+  let last = arr[arr.length-1];
+  let slope = last - arr[arr.length-10] || 0;
+
+  let forecast="", confidence=50;
+
+  // direction analysis
+  if(slope>5 && stats.avg>60){
+    forecast="🚀 AI Forecast: Market likely to remain Bullish ↑";
+    confidence=70+Math.min(20, slope);
+  } 
+  else if(slope<-5 && stats.avg<55){
+    forecast="📉 AI Forecast: Market momentum Bearish ↓";
+    confidence=70+Math.min(20, -slope);
+  } 
+  else if(stats.stdev>20){
+    forecast="⚠️ AI Forecast: Volatile — expect whipsaws ⚡";
+    confidence=55;
+  } 
+  else {
+    forecast="➖ AI Forecast: Sideways / Neutral zone ⏸";
+    confidence=50;
+  }
+
+  // clamp
+  confidence=Math.max(0,Math.min(99,confidence));
+
+  return {text:forecast, conf:confidence};
+}
+
+// === EXTEND SUPER ANALYZER HOOK ===
+const _updateTotalScoreAI=updateTotalScore;
+updateTotalScore=function(){
+  const total=_updateTotalScoreAI();
+  if(total!=null){
+    // forecast
+    let fc = forecastNext(fullHistory);
+    forecastBox.innerHTML=`<b>🤖 Forecast Engine:</b><br>${fc.text}`;
+    forecastFill.style.width=fc.conf+"%";
+  }
+  return total;
+};
+</script>
