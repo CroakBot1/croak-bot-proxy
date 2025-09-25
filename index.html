@@ -1245,3 +1245,42 @@ function drawLegend(){
 
 
 
+<script>
+// ===================================================
+// 🖥️ Auto Responsive Page Height & Width (Desktop Safe Add-on)
+// ===================================================
+(function(){
+  const DESKTOP_MIN_WIDTH = 1024;
+
+  function adjustPage(){
+    const html = document.documentElement;
+    const body = document.body;
+
+    // I-enable ang full flexible height & width
+    Object.assign(html.style, {
+      width: "100%",
+      height: "auto",
+      minHeight: "100vh",
+      overflowX: "hidden"
+    });
+
+    Object.assign(body.style, {
+      width: "100%",
+      height: "auto",
+      minHeight: "100vh",
+      overflowX: "hidden",
+      overflowY: "auto"
+    });
+
+    // Desktop specific fix
+    if(window.innerWidth >= DESKTOP_MIN_WIDTH){
+      body.style.maxWidth = "100%";
+    }
+  }
+
+  // run sa load
+  window.addEventListener("load", adjustPage);
+  // run sa resize
+  window.addEventListener("resize", adjustPage);
+})();
+</script>
