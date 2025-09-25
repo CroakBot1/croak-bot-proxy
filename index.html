@@ -1247,16 +1247,16 @@ function drawLegend(){
 
 <script>
 // ===================================================
-// 🖥️ Auto Responsive Page Height & Width (Desktop Safe Add-on)
+// 📱🖥️ Universal Auto Responsive Page Height & Width
+// (Works on All Devices - Mobile + Desktop)
 // ===================================================
 (function(){
-  const DESKTOP_MIN_WIDTH = 1024;
 
   function adjustPage(){
     const html = document.documentElement;
     const body = document.body;
 
-    // I-enable ang full flexible height & width
+    // Unlock flexible height & width para sa tanan device
     Object.assign(html.style, {
       width: "100%",
       height: "auto",
@@ -1269,13 +1269,9 @@ function drawLegend(){
       height: "auto",
       minHeight: "100vh",
       overflowX: "hidden",
-      overflowY: "auto"
+      overflowY: "auto",
+      maxWidth: "100%"  // prevents cut-off sa tanan screens
     });
-
-    // Desktop specific fix
-    if(window.innerWidth >= DESKTOP_MIN_WIDTH){
-      body.style.maxWidth = "100%";
-    }
   }
 
   // run sa load
@@ -1284,3 +1280,4 @@ function drawLegend(){
   window.addEventListener("resize", adjustPage);
 })();
 </script>
+
