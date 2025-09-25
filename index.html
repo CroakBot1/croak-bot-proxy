@@ -609,3 +609,114 @@ updateTotalScore=function(){
 
 
 
+<script>
+// ===================================================
+// 🚀 ADVANCED 1000x MARKET SCORING ANALYZER
+// ===================================================
+
+// keep original analyzer UI
+// (reuse barBox, barFill, scoreText, statusText, alertBox, guideBox, chartWrap...)
+
+// ==== EXTENDED HISTORY ====
+let fullHistory = [];   // store all scores
+let maxRuns = 1000;     // analyze up to 1000 runs
+
+// ==== DISTRIBUTION CANVAS ====
+const distWrap = document.createElement("div");
+distWrap.style.cssText = `margin:12px 0;background:#111;padding:10px;border-radius:6px;`;
+const distCanvas = document.createElement("canvas");
+distCanvas.width=500; distCanvas.height=120;
+distWrap.appendChild(distCanvas);
+chartWrap.insertAdjacentElement("afterend", distWrap);
+const dctx = distCanvas.getContext("2d");
+
+// ==== STATS FUNCTION ====
+function calcStats(arr){
+  if(arr.length===0) return null;
+
+  let sorted=[...arr].sort((a,b)=>a-b);
+  let avg = arr.reduce((a,b)=>a+b,0)/arr.length;
+  let mid = sorted[Math.floor(sorted.length/2)];
+  let min = sorted[0], max = sorted[sorted.length-1];
+  let range=max-min;
+  let variance = arr.reduce((s,v)=>s+Math.pow(v-avg,2),0)/arr.length;
+  let stdev=Math.sqrt(variance);
+
+  // bullish vs bearish %
+  let bull = arr.filter(v=>v>=60).length/arr.length*100;
+  let bear = arr.filter(v=>v<60).length/arr.length*100;
+
+  // risk level
+  let risk="Moderate";
+  if(stdev>20) risk="High";
+  else if(stdev<8) risk="Low";
+
+  return {avg,mid,min,max,range,stdev,bull,bear,risk};
+}
+
+// ==== DRAW DISTRIBUTION HISTOGRAM ====
+function drawDistribution(arr){
+  dctx.clearRect(0,0,distCanvas.width,distCanvas.height);
+  if(arr.length===0) return;
+
+  // bucket counts
+  let buckets=20;
+  let counts=new Array(buckets).fill(0);
+  arr.forEach(v=>{
+    let idx=Math.floor(v/100*buckets);
+    if(idx>=buckets) idx=buckets-1;
+    counts[idx]++;
+  });
+
+  let maxCount=Math.max(...counts);
+  let barW=distCanvas.width/buckets;
+
+  counts.forEach((c,i)=>{
+    let h=(c/maxCount)*distCanvas.height;
+    dctx.fillStyle="lime";
+    if(i<8) dctx.fillStyle="red";      // bearish zone
+    else if(i>=12) dctx.fillStyle="green"; // bullish zone
+    dctx.fillRect(i*barW,distCanvas.height-h,barW-2,h);
+  });
+
+  // axis line 60% bucket
+  let lineX=Math.floor(0.60*buckets)*barW;
+  dctx.strokeStyle="yellow";
+  dctx.beginPath();
+  dctx.moveTo(lineX,0);
+  dctx.lineTo(lineX,distCanvas.height);
+  dctx.stroke();
+}
+
+// ==== SUPER ANALYZER ====
+function superAnalyze(){
+  let stats=calcStats(fullHistory);
+  if(!stats) return "Waiting for enough runs...";
+
+  let msg=`Avg: ${stats.avg.toFixed(1)}% • Median: ${stats.mid.toFixed(1)}%<br>
+           Range: ${stats.min.toFixed(0)}–${stats.max.toFixed(0)}% • Volatility σ=${stats.stdev.toFixed(1)}<br>
+           🐂 Bullish Probability: ${stats.bull.toFixed(1)}% • 🐻 Bearish Probability: ${stats.bear.toFixed(1)}%<br>
+           📊 Risk Level: <b>${stats.risk}</b>`;
+
+  return msg;
+}
+
+// ==== HOOK UPDATE EXTENSION ====
+const _updateTotalScoreX=updateTotalScore;
+updateTotalScore=function(){
+  const total=_updateTotalScoreX();
+  if(total!=null){
+    // push into fullHistory
+    fullHistory.push(total);
+    if(fullHistory.length>maxRuns) fullHistory.shift();
+
+    // update advanced summary
+    guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
+                       "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
+
+    // draw distribution
+    drawDistribution(fullHistory);
+  }
+  return total;
+};
+</script>
