@@ -1360,12 +1360,13 @@ function drawLegend(){
 
 
 
+
 <script>
 // ===================================================
-// 📊 BULLISH vs BEARISH METER (SPLIT GAUGE STYLE)
+// 📊 BULLISH vs BEARISH PROBABILITY METER
 // ===================================================
 
-// container
+// create meter container
 const probMeter = document.createElement("div");
 probMeter.style.cssText = `
   width:100%;
@@ -1377,7 +1378,7 @@ probMeter.style.cssText = `
   margin:10px 0;
 `;
 
-// bullish fill (left → right)
+// bullish fill (green, left → right)
 const bullFill = document.createElement("div");
 bullFill.style.cssText = `
   height:100%;
@@ -1389,7 +1390,7 @@ bullFill.style.cssText = `
   transition: width 0.5s ease;
 `;
 
-// bearish fill (right → left)
+// bearish fill (red, right → left)
 const bearFill = document.createElement("div");
 bearFill.style.cssText = `
   height:100%;
@@ -1414,12 +1415,12 @@ meterLabel.style.cssText = `
   font-family:Arial, sans-serif;
 `;
 
-// append elements
+// append fills and label
 probMeter.appendChild(bullFill);
 probMeter.appendChild(bearFill);
 probMeter.appendChild(meterLabel);
 
-// insert at top of guideBox
+// insert meter above guideBox content
 guideBox.style.position="relative";
 guideBox.insertAdjacentElement("afterbegin", probMeter);
 
@@ -1435,7 +1436,7 @@ function updateBullBearMeter(stats){
     meterLabel.innerHTML = `🐂 ${bullPercent.toFixed(1)}% / 🐻 ${bearPercent.toFixed(1)}%`;
 }
 
-// hook into your analyzer
+// hook into your existing updateTotalScore
 const _updateTotalScoreX2 = updateTotalScore;
 updateTotalScore = function(){
     const total = _updateTotalScoreX2();
