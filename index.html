@@ -314,24 +314,22 @@ document.write(unescape('%0A%3C%21DOCTYPE%20html%3E%0A%3Chtml%3E%0A%3Chead%3E%0A
 
 
 
+
 <script>
-// ===================================================
-// 🌌 ULTRA MEGA FUSION 2025: Bullish vs Bearish Analyzer
-// (Merged + Safe Edition)
-// ===================================================
+// ====== Add-on: Full Bullish vs Bearish Analyzer + History & Traps ======
 
 // ==== MAIN BAR ====
 const barBox = document.createElement("div");
 barBox.id = "bullBearBar";
 barBox.style.cssText = `
   width:100%;
-  height:56px;
-  background:#0b0b0b;
-  margin:20px 0;
-  border-radius:18px;
+  height:30px;
+  background:#111;
+  margin:12px 0;
+  border-radius:8px;
   overflow:hidden;
   position:relative;
-  box-shadow:inset 0 0 20px rgba(0,0,0,0.9), 0 0 18px rgba(0,255,120,0.15);
+  box-shadow:inset 0 0 8px rgba(0,0,0,0.6);
 `;
 
 // bar fill
@@ -339,9 +337,8 @@ const barFill = document.createElement("div");
 barFill.style.cssText = `
   height:100%;
   width:0%;
-  background:linear-gradient(90deg,#d32f2f,#f57c00,#fbc02d,#66bb6a,#2e7d32);
-  transition:width 1.2s cubic-bezier(0.4,0,0.2,1);
-  border-radius:18px;
+  background:linear-gradient(90deg,#b71c1c,#ff4d4d,#06d6a0,#1b5e20);
+  transition:width 0.8s cubic-bezier(0.4,0,0.2,1);
 `;
 
 // score text
@@ -351,70 +348,72 @@ scoreText.style.cssText = `
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  font-size:20px;
+  font-size:13px;
   font-weight:bold;
   color:#fff;
-  text-shadow:1px 1px 6px rgba(0,0,0,0.85);
-  letter-spacing:0.8px;
+  text-shadow:1px 1px 2px #000;
 `;
+
+// marker @ 60
+const centerLine = document.createElement("div");
+centerLine.style.cssText = `
+  position:absolute;
+  left:60%;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:#fff;
+  opacity:0.6;
+`;
+const centerDrop = document.createElement("div");
+centerDrop.style.cssText = `
+  position:absolute;
+  left:60%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, #fff, #ccc);
+  border:2px solid #000;
+  box-shadow:0 0 8px rgba(255,255,255,0.8);
+`;
+
+// labels
+const leftLabel = document.createElement("span");
+leftLabel.textContent = "🐻 Bearish";
+leftLabel.style.cssText = `position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:11px;color:#ff4d4d;font-weight:bold;`;
+const rightLabel = document.createElement("span");
+rightLabel.textContent = "Bullish 🐂";
+rightLabel.style.cssText = `position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;color:#00e676;font-weight:bold;`;
 
 // needle
 const needle = document.createElement("div");
 needle.style.cssText = `
   position:absolute;
-  top:-16px;
+  top:-6px;
   width:0;
   height:0;
-  border-left:10px solid transparent;
-  border-right:10px solid transparent;
-  border-bottom:20px solid yellow;
-  filter:drop-shadow(0 0 6px yellow);
-  transition:left 0.8s ease;
+  border-left:6px solid transparent;
+  border-right:6px solid transparent;
+  border-bottom:8px solid yellow;
+  transition:left 0.6s ease;
 `;
 
-// labels
-function makeLabel(txt,pos,color,tip){
-  const el=document.createElement("span");
-  el.textContent=txt;
-  el.title=tip;
-  el.style.cssText=`
-    position:absolute;
-    ${pos}:10px;
-    top:50%;
-    transform:translateY(-50%);
-    font-size:14px;
-    color:${color};
-    font-weight:bold;
-    cursor:help;
-  `;
-  return el;
-}
-const leftLabel=makeLabel("🐻 Bearish","left","#ff5252","Weak market, sellers dominate");
-const rightLabel=makeLabel("Bullish 🐂","right","#00e676","Strong market, buyers dominate");
-
-barBox.append(barFill,scoreText,leftLabel,rightLabel,needle);
+// append
+barBox.append(barFill,scoreText,centerLine,centerDrop,leftLabel,rightLabel,needle);
 document.querySelector("#output").insertAdjacentElement("beforebegin", barBox);
 
-// ==== STATUS ====
-const statusText=document.createElement("div");
-statusText.style.cssText=`
-  margin:12px 0;
-  font-size:16px;
-  font-weight:bold;
-  color:#eee;
-  padding:10px 14px;
-  background:#1a1a1a;
-  border-radius:10px;
-  box-shadow:0 0 8px rgba(0,0,0,0.6);
-`;
-barBox.insertAdjacentElement("afterend",statusText);
+// ==== STATUS & ALERTS ====
+const statusText = document.createElement("div");
+statusText.style.cssText = `margin:6px 0;font-size:13px;font-weight:bold;color:#ccc;`;
+barBox.insertAdjacentElement("afterend", statusText);
 
-// ==== ALERT BOX ====
-const alertBox=document.createElement("div");
-alertBox.style.cssText=`
-  margin:14px 0;
-  padding:14px 18px;
-  border-radius:12px;
+const alertBox = document.createElement("div");
+alertBox.style.cssText = `
+  margin:8px 0;
+  padding:10px 14px;
+  border-radius:8px;
   background:#ff9800;
   color:#fff;
   font-size:14px;
@@ -422,48 +421,46 @@ alertBox.style.cssText=`
   display:none;
   animation:pulse 1.5s infinite;
 `;
-statusText.insertAdjacentElement("afterend",alertBox);
+alertBox.innerHTML = "⚠️ Market Alert";
+statusText.insertAdjacentElement("afterend", alertBox);
 
-// pulse anim
-const styleEl=document.createElement("style");
-styleEl.textContent=`
-@keyframes pulse{
-  0%{box-shadow:0 0 0 0 rgba(255,152,0,0.6);}
-  70%{box-shadow:0 0 0 16px rgba(255,152,0,0);}
-  100%{box-shadow:0 0 0 0 rgba(255,152,0,0);}
+// pulse style
+const styleEl = document.createElement("style");
+styleEl.textContent = `
+@keyframes pulse {
+  0% { box-shadow:0 0 0 0 rgba(255,152,0,0.7); }
+  70% { box-shadow:0 0 0 10px rgba(255,152,0,0); }
+  100% { box-shadow:0 0 0 0 rgba(255,152,0,0); }
 }`;
 document.head.appendChild(styleEl);
 
 // ==== SUMMARY BOX ====
-const guideBox=document.createElement("div");
-guideBox.style.cssText=`
-  margin:12px 0;
-  padding:12px;
-  background:#191919;
-  border-radius:10px;
-  font-size:13px;
-  color:#bbb;
-  border:1px solid #333;
-  line-height:1.7;
-`;
-guideBox.innerHTML="<b>📊 Market Summary:</b><br>Waiting for data...";
-alertBox.insertAdjacentElement("afterend",guideBox);
+const guideBox = document.createElement("div");
+guideBox.style.cssText = `margin:12px 0;padding:10px;border-radius:6px;background:#1e1e1e;color:#ccc;font-size:12px;line-height:1.6;`;
+guideBox.innerHTML = "<b>📊 Market Summary:</b><br>Waiting for data...";
+alertBox.insertAdjacentElement("afterend", guideBox);
 
 // ==== CHART ====
-const chart=document.createElement("canvas");
-chart.width=500; chart.height=100;
-chart.style.cssText="margin:12px 0; display:block; background:#111; border-radius:8px;";
-guideBox.insertAdjacentElement("afterend",chart);
-const ctx=chart.getContext("2d");
+const chartWrap = document.createElement("div");
+chartWrap.style.cssText = `margin:12px 0;background:#000;padding:8px;border-radius:6px;`;
+const canvas = document.createElement("canvas");
+canvas.width = 500; canvas.height = 100;
+chartWrap.appendChild(canvas);
+guideBox.insertAdjacentElement("afterend", chartWrap);
+const ctx = canvas.getContext("2d");
+
+// ==== SOUND ====
+const beepSound = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YQAAAAA=');
 
 // ==== VARS ====
-let prevScore=null, prevTime=null;
-let history=[], maxHistory=80;
+let prevScore = null, prevTime = null;
+let history = [], maxHistory = 80;
 
 // ==== MOVING AVG ====
 function movingAverage(arr,len){
-  if(arr.length<len) return null;
-  return arr.slice(-len).reduce((a,b)=>a+b,0)/len;
+  if(arr.length < len) return null;
+  let slice = arr.slice(-len);
+  return slice.reduce((a,b)=>a+b,0)/len;
 }
 
 // ==== ANALYZER ====
@@ -471,7 +468,7 @@ function analyzeMarket(total,diff,speed){
   history.push(total);
   if(history.length>maxHistory) history.shift();
 
-  let maxVal=Math.max(...history),minVal=Math.min(...history),range=maxVal-minVal;
+  let maxVal=Math.max(...history), minVal=Math.min(...history), range=maxVal-minVal;
   let summary=[];
 
   summary.push(total>=60?"🐂 Bullish Bias":"🐻 Bearish Bias");
@@ -486,11 +483,11 @@ function analyzeMarket(total,diff,speed){
   else if(range<8) summary.push("💤 Low Volatility");
   else summary.push("Normal Volatility");
 
-  let shortMA=movingAverage(history,10);
-  let longMA=movingAverage(history,30);
-  if(shortMA&&longMA){
-    if(shortMA>longMA) summary.push("📈 Trend Up");
-    else if(shortMA<longMA) summary.push("📉 Trend Down");
+  let shortMA = movingAverage(history,10);
+  let longMA  = movingAverage(history,30);
+  if(shortMA && longMA){
+    if(shortMA>longMA) summary.push("📈 Trend: Up");
+    else if(shortMA<longMA) summary.push("📉 Trend: Down");
     else summary.push("➡ Side Trend");
   }
 
@@ -502,18 +499,37 @@ function analyzeMarket(total,diff,speed){
 
 // ==== DRAW CHART ====
 function drawChart(){
-  ctx.clearRect(0,0,chart.width,chart.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // price line
   ctx.strokeStyle="#0f0"; ctx.beginPath();
-  let step=chart.width/(maxHistory-1);
+  let step=canvas.width/(maxHistory-1);
   history.forEach((val,i)=>{
-    let x=i*step, y=chart.height-(val/100*chart.height);
-    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    let x=i*step, y=canvas.height-(val/100*canvas.height);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
   });
   ctx.stroke();
+
+  // moving avg line
+  let maVals = history.map((_,i)=>movingAverage(history.slice(0,i+1),10));
+  ctx.strokeStyle="#ff0"; ctx.beginPath();
+  maVals.forEach((val,i)=>{
+    if(val!==null){
+      let x=i*step, y=canvas.height-(val/100*canvas.height);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+  });
+  ctx.stroke();
+
+  // axis line 60%
+  ctx.strokeStyle="rgba(255,255,255,0.3)";
+  ctx.beginPath();
+  let y60=canvas.height-(60/100*canvas.height);
+  ctx.moveTo(0,y60); ctx.lineTo(canvas.width,y60); ctx.stroke();
 }
 
 // ==== HOOK UPDATE ====
-const _updateTotalScore=updateTotalScore;
+const _updateTotalScore = updateTotalScore;
 updateTotalScore=function(){
   const total=_updateTotalScore();
   const now=Date.now();
@@ -523,27 +539,42 @@ updateTotalScore=function(){
     scoreText.textContent=total.toFixed(0)+"%";
     needle.style.left=total+"%";
 
-    // status
-    if(total<40) statusText.innerHTML="🔴 "+total.toFixed(0)+"% Deep Bearish";
-    else if(total<60) statusText.innerHTML="📉 "+total.toFixed(0)+"% Bearish";
-    else if(total<80) statusText.innerHTML="📈 "+total.toFixed(0)+"% Bullish";
-    else statusText.innerHTML="🟢 "+total.toFixed(0)+"% Strong Bullish";
+    // status text
+    if(total<40) statusText.innerHTML="🔴 "+total.toFixed(0)+"% → <span style='color:#ff4d4d'>Deep Bearish</span>. Sellers rule.";
+    else if(total<60) statusText.innerHTML="📉 "+total.toFixed(0)+"% → <span style='color:#ff6666'>Bearish</span>. Weak buyers.";
+    else if(total<80) statusText.innerHTML="📈 "+total.toFixed(0)+"% → <span style='color:#00e676'>Bullish</span>. Buyers gaining.";
+    else statusText.innerHTML="🟢 "+total.toFixed(0)+"% → <span style='color:#00ff80'>Strong Bullish</span>. Buyers dominate.";
 
+    // movement detection
     if(prevScore!==null&&prevTime!==null){
       const diff=total-prevScore, dt=(now-prevTime)/1000, speed=diff/dt;
 
-      // alerts & traps
-      if(diff<=-15){ showAlert("📉 Dump Alert","red"); }
-      else if(diff>=15){ showAlert("🚀 Rally Alert","green"); }
-      else if(Math.abs(diff)<5 && total>40 && total<80){ showAlert("🔄 Sideways Market","#0288d1"); }
+      // alerts
+      if(diff<=-15){ alertBox.style.display="block";alertBox.style.background="#d32f2f";alertBox.innerHTML="📉 <b>Dump Alert!</b><br>"+diff.toFixed(0)+"% fast drop";beepSound.play();}
+      else if(diff>=15){ alertBox.style.display="block";alertBox.style.background="#2e7d32";alertBox.innerHTML="🚀 <b>Rally Alert!</b><br>"+diff.toFixed(0)+"% surge";beepSound.play();}
+      else if(Math.abs(diff)<5 && total>40 && total<80){ alertBox.style.display="block";alertBox.style.background="#0288d1";alertBox.innerHTML="🔄 <b>Sideways Market</b>";}
+      else alertBox.style.display="none";
 
-      if(prevScore<60 && total>=60){ showAlert("🔄 Reversal: Bearish → Bullish","#4caf50"); }
-      else if(prevScore>=60 && total<60){
-        if(prevScore>=70) showAlert("⚠️ Bull Trap!","#ff9800");
-        else showAlert("🔄 Reversal: Bullish → Bearish","#f44336");
+      // traps & reversals
+      if(prevScore<60 && total>=60){
+        alertBox.style.display="block";alertBox.style.background="#4caf50";
+        alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bearish → Bullish";beepSound.play();
       }
-      if(prevScore<=40 && total>60){ showAlert("⚠️ Bear Trap!","#00bcd4"); }
+      else if(prevScore>=60 && total<60){
+        if(prevScore>=70){
+          alertBox.style.display="block";alertBox.style.background="#ff9800";
+          alertBox.innerHTML="⚠️ <b>Bull Trap!</b><br>Fakeout drop below 60";beepSound.play();
+        }else{
+          alertBox.style.display="block";alertBox.style.background="#f44336";
+          alertBox.innerHTML="🔄 <b>Reversal!</b><br>Bullish → Bearish";beepSound.play();
+        }
+      }
+      if(prevScore<=40 && total>60){
+        alertBox.style.display="block";alertBox.style.background="#00bcd4";
+        alertBox.innerHTML="⚠️ <b>Bear Trap!</b><br>Sharp recovery above 60";beepSound.play();
+      }
 
+      // update summary
       guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,diff,speed);
     }
 
@@ -552,16 +583,10 @@ updateTotalScore=function(){
   }
   return total;
 };
-
-// ==== ALERT HELPER ====
-function showAlert(msg,color){
-  alertBox.innerHTML=msg;
-  alertBox.style.background=color;
-  alertBox.style.display="block";
-  clearTimeout(alertBox.timer);
-  alertBox.timer=setTimeout(()=>alertBox.style.display="none",6000);
-}
 </script>
+
+
+
 
 
 
