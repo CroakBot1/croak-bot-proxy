@@ -827,3 +827,197 @@ updateTotalScore=function(){
   return total;
 };
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ===================================================
+// 🤖📊 ULTRA ADVANCED AI MULTI-FORECAST + PROJECTION ENGINE (with Legend)
+// ===================================================
+
+// === FORECAST PANEL ===
+const forecastPanel = document.createElement("div");
+forecastPanel.style.cssText = `
+  margin:14px 0;
+  padding:12px;
+  border-radius:10px;
+  background:#181818;
+  color:#eee;
+  font-size:13px;
+  line-height:1.6;
+  box-shadow:0 0 12px rgba(0,0,0,0.5);
+`;
+distWrap.insertAdjacentElement("afterend", forecastPanel);
+
+// helper: confidence bar
+function makeConfBar(){
+  let wrap=document.createElement("div");
+  wrap.style.cssText="margin:6px 0;width:100%;height:14px;background:#111;border-radius:5px;overflow:hidden;";
+  let fill=document.createElement("div");
+  fill.style.cssText="height:100%;width:0%;background:linear-gradient(90deg,#ff4d4d,#ff9800,#00e676);transition:width 0.6s ease;";
+  wrap.appendChild(fill);
+  return {wrap,fill};
+}
+
+// create 3 forecast slots
+let forecastSlots = ["Short-Term","Mid-Term","Long-Term"].map(label=>{
+  let box=document.createElement("div");
+  box.style.marginBottom="10px";
+  let title=document.createElement("b");
+  title.textContent=label+": ";
+  let text=document.createElement("span");
+  text.textContent="Waiting for data...";
+  let {wrap,fill}=makeConfBar();
+  box.appendChild(title);
+  box.appendChild(text);
+  box.appendChild(wrap);
+  forecastPanel.appendChild(box);
+  return {text,fill};
+});
+
+// === FORECAST LOGIC ===
+function multiForecast(arr){
+  if(arr.length<50){
+    return [
+      {msg:"📡 Collecting data...",conf:0},
+      {msg:"📡 Collecting data...",conf:0},
+      {msg:"📡 Collecting data...",conf:0},
+    ];
+  }
+
+  let stats=calcStats(arr);
+  let last=arr[arr.length-1];
+
+  // short-term: last 10 runs slope
+  let slope10 = last - arr[arr.length-10];
+  let short={msg:"",conf:50};
+  if(slope10>5) { short.msg="🚀 Likely short rally ↑"; short.conf=70+Math.min(20,slope10);}
+  else if(slope10<-5){ short.msg="📉 Likely dip incoming ↓"; short.conf=70+Math.min(20,-slope10);}
+  else { short.msg="➖ Neutral / chop zone"; short.conf=50;}
+
+  // mid-term: compare 30 vs 60 MA
+  let ma30 = movingAverage(arr,30), ma60=movingAverage(arr,60);
+  let mid={msg:"",conf:55};
+  if(ma30 && ma60){
+    if(ma30>ma60){ mid.msg="📈 Mid-term trend bias UP"; mid.conf=65;}
+    else if(ma30<ma60){ mid.msg="📉 Mid-term trend bias DOWN"; mid.conf=65;}
+    else { mid.msg="➖ Mid-term sideways"; mid.conf=50;}
+  }
+
+  // long-term: overall avg + volatility
+  let long={msg:"",conf:55};
+  if(stats.avg>60 && stats.stdev<15){ long.msg="🐂 Long-term bullish structure"; long.conf=70;}
+  else if(stats.avg<50 && stats.stdev<15){ long.msg="🐻 Long-term bearish structure"; long.conf=70;}
+  else if(stats.stdev>20){ long.msg="⚠️ Long-term volatile / uncertain"; long.conf=60;}
+  else { long.msg="➖ Long-term undecided"; long.conf=55;}
+
+  return [short,mid,long];
+}
+
+// === HOOK UPDATE EXTENSION ===
+const _updateTotalScoreAI2=updateTotalScore;
+updateTotalScore=function(){
+  const total=_updateTotalScoreAI2();
+  if(total!=null){
+    let fcs = multiForecast(fullHistory);
+    fcs.forEach((f,idx)=>{
+      forecastSlots[idx].text.textContent=f.msg;
+      forecastSlots[idx].fill.style.width=f.conf+"%";
+    });
+  }
+  return total;
+};
+
+// ===================================================
+// 📊 Projection Chart Overlay + Legend
+// ===================================================
+
+// extend drawChart to add projections
+const _drawChartOrig = drawChart;
+drawChart = function(){
+  _drawChartOrig();
+
+  if(fullHistory.length<30) return;
+
+  let last = fullHistory[fullHistory.length-1];
+
+  // === Short-term projection ===
+  let slope10 = last - fullHistory[fullHistory.length-10];
+  let projShort = last + slope10*0.5; 
+  drawProjectionLine(last, projShort, "lime");
+
+  // === Mid-term projection ===
+  let ma30 = movingAverage(fullHistory,30), ma60 = movingAverage(fullHistory,60);
+  let projMid = last;
+  if(ma30 && ma60){
+    if(ma30>ma60) projMid = last+8;   
+    else if(ma30<ma60) projMid = last-8; 
+  }
+  drawProjectionLine(last, projMid, "yellow");
+
+  // === Long-term projection ===
+  let stats=calcStats(fullHistory);
+  let projLong = last;
+  if(stats.avg>60) projLong = last+12;
+  else if(stats.avg<50) projLong = last-12;
+  drawProjectionLine(last, projLong, "cyan");
+
+  // === Draw Legend ===
+  drawLegend();
+};
+
+// --- HELPER: Draw Dashed Projection Line ---
+function drawProjectionLine(startVal, endVal, color){
+  ctx.beginPath();
+  ctx.setLineDash([6,4]);
+  ctx.strokeStyle=color;
+  let startX = (history.length-1)*(canvas.width/(maxHistory-1));
+  let startY = canvas.height-(startVal/100*canvas.height);
+  let endX = canvas.width;
+  let endY = canvas.height-(endVal/100*canvas.height);
+  ctx.moveTo(startX,startY);
+  ctx.lineTo(endX,endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// --- HELPER: Draw Legend ---
+function drawLegend(){
+  let legendItems = [
+    {label:"Short-Term", color:"lime"},
+    {label:"Mid-Term", color:"yellow"},
+    {label:"Long-Term", color:"cyan"},
+  ];
+  let startX = 10;
+  let startY = canvas.height - 10;
+
+  ctx.font="12px Arial";
+  ctx.textBaseline="bottom";
+
+  legendItems.forEach((item,idx)=>{
+    ctx.fillStyle=item.color;
+    ctx.fillRect(startX, startY-12*idx-8, 18, 6);
+    ctx.fillStyle="#fff";
+    ctx.fillText(item.label, startX+24, startY-12*idx-3);
+  });
+}
+</script>
