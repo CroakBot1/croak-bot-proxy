@@ -1244,27 +1244,27 @@ function drawLegend(){
 
 
 
-
-<!-- ==============================
-     🌐 Universal Responsive Page Fix
-     Works on All Browsers & Devices
-     ============================== -->
+<!-- ==========================================
+     🌊 Advanced Fluid Responsive Page Script
+     Universal Desktop + Mobile Fix
+     ========================================== -->
 
 <!-- 1️⃣ Meta Viewport for Mobile Scaling -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<!-- 2️⃣ Universal CSS Reset / Responsive Body -->
+<!-- 2️⃣ CSS Reset + Smooth Scroll -->
 <style>
   html, body {
     width: 100%;
-    min-height: 100vh;      /* full screen height */
+    min-height: 100vh;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;      /* hide horizontal scroll */
-    overflow-y: auto;        /* allow vertical scroll */
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth; /* smooth scrolling */
+    background: #fff;         /* optional, change as needed */
   }
 
-  /* Optional: make images and videos responsive */
   img, video {
     max-width: 100%;
     height: auto;
@@ -1272,34 +1272,41 @@ function drawLegend(){
   }
 </style>
 
-<!-- 3️⃣ JS Add-on for Dynamic Page Adjustment -->
+<!-- 3️⃣ Advanced JS Fluid Page Add-on -->
 <script>
 (function() {
-  function adjustPage() {
+  function adjustFluidPage() {
     const html = document.documentElement;
     const body = document.body;
 
+    // Set flexible html & body
     Object.assign(html.style, {
       width: "100%",
-      height: "auto",
       minHeight: "100vh",
       overflowX: "hidden"
     });
 
     Object.assign(body.style, {
       width: "100%",
-      height: "auto",
       minHeight: "100vh",
       overflowX: "hidden",
       overflowY: "auto",
       maxWidth: "100%"
     });
+
+    // Optional: auto-expand body if content grows dynamically
+    const contentHeight = body.scrollHeight;
+    if(contentHeight > window.innerHeight){
+      body.style.height = contentHeight + "px";
+    }
   }
 
-  // Run on page load and resize
-  window.addEventListener("load", adjustPage);
-  window.addEventListener("resize", adjustPage);
+  // Run on page load, resize, and every 500ms for dynamic content
+  window.addEventListener("load", adjustFluidPage);
+  window.addEventListener("resize", adjustFluidPage);
+  setInterval(adjustFluidPage, 500); // fluid update for dynamic content
 })();
 </script>
+
 
 
