@@ -1310,3 +1310,87 @@ function drawLegend(){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ==== ADD-ON: Bullish vs Bearish Meter ====
+const meterBox = document.createElement("div");
+meterBox.style.cssText = `
+  width:100%;
+  height:26px;
+  border-radius:6px;
+  overflow:hidden;
+  display:flex;
+  margin:10px 0;
+  background:#222;
+  box-shadow:inset 0 0 6px rgba(0,0,0,0.6);
+  position:relative;
+`;
+
+// bearish (red)
+const bearishBar = document.createElement("div");
+bearishBar.style.cssText = `
+  height:100%;
+  width:50%;
+  background:#c62828;
+  transition:width 0.6s ease;
+`;
+
+// bullish (green)
+const bullishBar = document.createElement("div");
+bullishBar.style.cssText = `
+  height:100%;
+  width:50%;
+  background:#2e7d32;
+  transition:width 0.6s ease;
+`;
+
+meterBox.append(bearishBar, bullishBar);
+
+// percent labels
+const meterLabel = document.createElement("div");
+meterLabel.style.cssText = `
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:13px;
+  font-weight:bold;
+  color:#fff;
+  text-shadow:1px 1px 2px #000;
+`;
+meterBox.appendChild(meterLabel);
+
+// i-attach before guideBox
+guideBox.insertAdjacentElement("beforebegin", meterBox);
+
+// === Extend updateTotalScore ===
+const _updateScoreMeter = updateTotalScore;
+updateTotalScore = function(){
+  const total = _updateScoreMeter();
+  if(total!=null){
+    let bullish = total;
+    let bearish = 100 - total;
+
+    bearishBar.style.width = bearish+"%";
+    bullishBar.style.width = bullish+"%";
+
+    meterLabel.textContent = `🐻 ${bearish.toFixed(1)}% | ${bullish.toFixed(1)}% 🐂`;
+  }
+  return total;
+};
+</script>
