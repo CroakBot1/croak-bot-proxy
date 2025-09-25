@@ -1220,3 +1220,102 @@ function drawLegend(){
   });
 }
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ===================================================
+// 🌍 Auto Expand + Scrollable Page (Desktop + Mobile Friendly)
+// ===================================================
+(function(){
+  const DESKTOP_MIN_WIDTH = 1024;
+
+  function isDesktop(){
+    return window.innerWidth >= DESKTOP_MIN_WIDTH;
+  }
+
+  function makeScrollable(){
+    // Common unlocker for all devices
+    Object.assign(document.documentElement.style,{
+      height:'auto',
+      minHeight:'100%',
+      overflow:'auto'
+    });
+    Object.assign(document.body.style,{
+      height:'auto',
+      minHeight:'100%',
+      overflow:'auto'
+    });
+
+    // relax common containers
+    document.querySelectorAll("html, body, #root, #app, .app, .site, .main, .container")
+      .forEach(el=>{
+        el.style.overflow = "visible";
+        el.style.height = "auto";
+        el.style.maxHeight = "none";
+      });
+
+    // scan all elements for hidden overflow / fixed height
+    document.querySelectorAll("*").forEach(el=>{
+      const cs = getComputedStyle(el);
+
+      // if overflow hidden → unlock
+      if(cs.overflow==="hidden" || cs.overflowY==="hidden" || cs.overflowX==="hidden"){
+        el.style.overflow="auto";
+        el.style.overflowY="auto";
+        el.style.overflowX="auto";
+      }
+
+      // if height looks locked but content bigger → auto expand (skip fixed headers/footers)
+      const h = parseFloat(cs.height||0);
+      if(!isNaN(h) && el.scrollHeight > h+4 && cs.position!=="fixed"){
+        el.style.height="auto";
+        el.style.maxHeight="none";
+      }
+    });
+  }
+
+  function expandPage(){
+    if(isDesktop()){
+      // 💻 Desktop: full expansion
+      makeScrollable();
+    } else {
+      // 📱 Mobile: only unlock hidden scroll
+      document.body.style.overflow="auto";
+      document.documentElement.style.overflow="auto";
+    }
+  }
+
+  // run once after load
+  window.addEventListener("load", expandPage);
+  // re-run on resize
+  window.addEventListener("resize", expandPage);
+
+  // watch for dynamic changes
+  new MutationObserver(()=>{
+    expandPage();
+  }).observe(document.documentElement,{childList:true,subtree:true,attributes:true});
+
+})();
+</script>
