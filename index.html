@@ -1497,10 +1497,23 @@ topGaugeWrap.style.cssText = `
   box-shadow:0 4px 10px rgba(0,0,0,0.5);
   cursor:move;
   z-index:9999;
-  touch-action:none;   /* ✅ important for mobile drag */
+  touch-action:none;
 `;
 document.body.appendChild(topGaugeWrap);
 
+// ==== TITLE TEXT ====
+const title = document.createElement("div");
+title.innerText = "YOUR TRADE";
+title.style.cssText = `
+  font-size:20px;
+  font-weight:bold;
+  color:yellow;
+  margin-bottom:10px;
+  letter-spacing:1px;
+`;
+topGaugeWrap.appendChild(title);
+
+// ==== GAUGE CANVAS ====
 const lineCanvas = document.createElement("canvas");
 lineCanvas.width = 560; 
 lineCanvas.height = 80;
