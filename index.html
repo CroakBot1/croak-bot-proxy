@@ -1469,49 +1469,102 @@ updateTotalScore = function(){
 
 
 
+
+
+
+
+
+
+
 <script>
-// ==== SUPER ANALYZER ====
-function superAnalyze(){
-  let stats=calcStats(fullHistory);
-  if(!stats) return "Waiting for enough runs...";
+// ==== TOP LINE GAUGE CONTAINER ====
+const topGaugeWrap = document.createElement("div");
+topGaugeWrap.style.cssText = `
+  width:100%;
+  background:#111;
+  padding:20px;
+  text-align:center;
+  position:relative;
+  top:0;
+  left:0;
+  z-index:9999;
+`;
+document.body.prepend(topGaugeWrap); // ✅ ibutang sa pinaka-top
 
-  // text summary (with bullish & bearish probability)
-  let msg=`Avg: ${stats.avg.toFixed(1)}% • Median: ${stats.mid.toFixed(1)}%<br>
-           Range: ${stats.min.toFixed(0)}–${stats.max.toFixed(0)}% • Volatility σ=${stats.stdev.toFixed(1)}<br>
-           🐂 Bullish Probability: ${stats.bull.toFixed(1)}% • 🐻 Bearish Probability: ${stats.bear.toFixed(1)}%<br>
-           📊 Risk Level: <b>${stats.risk}</b><br>
-           <div id="gaugeHere"></div>`;   // ✅ placeholder for gauge
+const lineCanvas = document.createElement("canvas");
+lineCanvas.width = window.innerWidth - 40; 
+lineCanvas.height = 80;
+topGaugeWrap.appendChild(lineCanvas);
 
-  return msg;
+const lctx = lineCanvas.getContext("2d");
+
+// ==== DRAW LINE GAUGE ====
+function drawLineGauge(bull, bear){
+  lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
+
+  let margin = 40;
+  let startX = margin;
+  let endX   = lineCanvas.width - margin;
+  let midY   = lineCanvas.height/2;
+
+  // gradient line (red to green)
+  let grad = lctx.createLinearGradient(startX, midY, endX, midY);
+  grad.addColorStop(0,"red");
+  grad.addColorStop(1,"lime");
+
+  lctx.lineWidth=20;
+  lctx.strokeStyle=grad;
+  lctx.beginPath();
+  lctx.moveTo(startX, midY);
+  lctx.lineTo(endX, midY);
+  lctx.stroke();
+
+  // needle (based on bullish %)
+  let percent = bull/100; // 0–1
+  let nx = startX + (endX-startX)*percent;
+
+  lctx.beginPath();
+  lctx.strokeStyle="yellow";
+  lctx.lineWidth=3;
+  lctx.moveTo(nx, midY-30);
+  lctx.lineTo(nx, midY+30);
+  lctx.stroke();
+
+  // label text
+  lctx.fillStyle="red";
+  lctx.font="14px Arial";
+  lctx.fillText("Bearish", startX-30, midY+40);
+
+  lctx.fillStyle="lime";
+  lctx.fillText("Bullish", endX-30, midY+40);
+
+  lctx.fillStyle="yellow";
+  lctx.font="bold 16px Arial";
+  lctx.fillText(bull.toFixed(1)+"%", nx-15, midY-35);
 }
 
-// ==== HOOK UPDATE EXTENSION (override again) ====
-const _updateTotalScoreXX=updateTotalScore;
+// ==== HOOK UPDATE EXTENSION ====
+const _updateTotalScoreTop=updateTotalScore;
 updateTotalScore=function(){
-  const total=_updateTotalScoreXX();
+  const total=_updateTotalScoreTop();
   if(total!=null){
     fullHistory.push(total);
     if(fullHistory.length>maxRuns) fullHistory.shift();
 
     let stats=calcStats(fullHistory);
 
-    // update summary (with placeholder)
+    // update summary (retain existing)
     guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
                        "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
 
     // draw histogram
     drawDistribution(fullHistory);
 
-    // draw gauge sa placeholder
-    if(stats){
-      let container=document.getElementById("gaugeHere");
-      if(container && container.childNodes.length===0){ 
-        container.appendChild(gaugeCanvas); // move canvas under probabilities
-      }
-      drawGauge(stats.bull, stats.bear);
-    }
+    // draw top line gauge
+    if(stats) drawLineGauge(stats.bull, stats.bear);
   }
   return total;
 };
 </script>
+
 
