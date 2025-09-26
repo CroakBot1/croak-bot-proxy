@@ -1483,34 +1483,32 @@ updateTotalScore = function(){
 
 
 <script>
-// ==== TOP LINE GAUGE CONTAINER ====
+// ==== FLOATING & DRAGGABLE GAUGE CONTAINER ====
 const topGaugeWrap = document.createElement("div");
 topGaugeWrap.style.cssText = `
-  width:100%;
-  background:#111a;
-  backdrop-filter: blur(4px);
+  width: 600px;
+  background:#111;
   padding:20px;
   text-align:center;
-  position:fixed;   /* ✅ floating fixed on top */
-  top:0;
-  left:0;
+  position:fixed;   /* ✅ floating, not relative */
+  top:20px;
+  left:20px;
+  border-radius:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.5);
+  cursor:move;      /* ✅ cursor shows draggable */
   z-index:9999;
 `;
-document.body.prepend(topGaugeWrap); 
+document.body.appendChild(topGaugeWrap); // floating, not prepend
 
 const lineCanvas = document.createElement("canvas");
-lineCanvas.width = window.innerWidth - 40; 
+lineCanvas.width = 560; 
 lineCanvas.height = 80;
 topGaugeWrap.appendChild(lineCanvas);
 
 const lctx = lineCanvas.getContext("2d");
 
-// ==== GAUGE STATE ====
-let bullValue = 50;  // default 50%
-let isDragging = false;
-
 // ==== DRAW LINE GAUGE ====
-function drawLineGauge(bull){
+function drawLineGauge(bull, bear){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
   let margin = 40;
@@ -1530,8 +1528,8 @@ function drawLineGauge(bull){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
-  // needle
-  let percent = bull/100;
+  // needle (based on bullish %)
+  let percent = bull/100; 
   let nx = startX + (endX-startX)*percent;
 
   lctx.beginPath();
@@ -1554,33 +1552,21 @@ function drawLineGauge(bull){
   lctx.fillText(bull.toFixed(1)+"%", nx-15, midY-35);
 }
 
-// ==== DRAG EVENTS ====
-lineCanvas.addEventListener("mousedown", e=>{
+// ==== MAKE DIV DRAGGABLE ====
+let isDragging=false, offsetX=0, offsetY=0;
+
+topGaugeWrap.addEventListener("mousedown", e=>{
   isDragging = true;
-  updateNeedleFromMouse(e);
+  offsetX = e.clientX - topGaugeWrap.offsetLeft;
+  offsetY = e.clientY - topGaugeWrap.offsetTop;
 });
-lineCanvas.addEventListener("mousemove", e=>{
-  if(isDragging) updateNeedleFromMouse(e);
+document.addEventListener("mousemove", e=>{
+  if(isDragging){
+    topGaugeWrap.style.left = (e.clientX - offsetX) + "px";
+    topGaugeWrap.style.top  = (e.clientY - offsetY) + "px";
+  }
 });
-lineCanvas.addEventListener("mouseup", ()=>{ isDragging=false; });
-lineCanvas.addEventListener("mouseleave", ()=>{ isDragging=false; });
-
-function updateNeedleFromMouse(e){
-  let rect = lineCanvas.getBoundingClientRect();
-  let margin = 40;
-  let startX = margin;
-  let endX   = lineCanvas.width - margin;
-  let x = e.clientX - rect.left;
-
-  // clamp
-  if(x < startX) x = startX;
-  if(x > endX) x = endX;
-
-  let percent = (x - startX) / (endX-startX);
-  bullValue = percent*100;
-
-  drawLineGauge(bullValue);
-}
+document.addEventListener("mouseup", ()=> isDragging=false);
 
 // ==== HOOK UPDATE EXTENSION ====
 const _updateTotalScoreTop=updateTotalScore;
@@ -1599,15 +1585,11 @@ updateTotalScore=function(){
     // draw histogram
     drawDistribution(fullHistory);
 
-    // update floating gauge only if not dragging
-    if(stats && !isDragging){
-      bullValue = stats.bull; // auto-update from stats
-      drawLineGauge(bullValue);
-    }
+    // draw floating line gauge
+    if(stats) drawLineGauge(stats.bull, stats.bear);
   }
   return total;
 };
-
-// ==== Initial Draw ====
-drawLineGauge(bullValue);
 </script>
+
+
