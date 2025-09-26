@@ -1696,3 +1696,132 @@ updateTotalScore = function(){
 };
 </script>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// === TRADING SIGNALS EXTENSION ===
+// (Add-on script covering points 1–7)
+
+// ================== CONFIG ==================
+const SIGNAL_CFG = {
+  strongBuy: 70,          // 1) thresholds
+  buyThreshold: 60,
+  holdUpper: 60,
+  holdLower: 45,
+  cautious: 45,
+  strongSell: 30,
+  defaultSLpct: 0.03,     // 2) Stop loss % (3% default)
+  tp1pct: 0.05,           // Take profit 1 (5%)
+  tp2pct: 0.10,           // Take profit 2 (10%)
+  riskPerTradePct: 0.01   // 3) Risk 1% of account per trade
+};
+
+// 3) Account balance (edit to your real size)
+let accountBalance = 10000;
+
+// internal state
+let prevBull = currentBull || 50;
+
+// ================== HELPERS ==================
+
+// position sizing formula
+function calcPositionSize(entryPrice, stopLossPct){
+  const riskAmount = accountBalance * SIGNAL_CFG.riskPerTradePct;
+  const dollarRiskPerUnit = entryPrice * stopLossPct;
+  if(dollarRiskPerUnit <= 0) return 0;
+  return Math.floor(riskAmount / dollarRiskPerUnit);
+}
+
+// detect buy/sell/hold signal
+function getSignal(currBull){
+  const delta = currBull - prevBull;
+  const crossUp = (prevBull < SIGNAL_CFG.buyThreshold && currBull >= SIGNAL_CFG.buyThreshold);
+  const crossDown = (prevBull >= (SIGNAL_CFG.buyThreshold - 5) && currBull < (SIGNAL_CFG.buyThreshold - 5));
+
+  if(currBull >= SIGNAL_CFG.strongBuy) {
+    return {signal:"STRONG BUY", reason:`Bull=${currBull.toFixed(1)} ≥ ${SIGNAL_CFG.strongBuy}`, aggression:"aggressive"};
+  }
+  if(currBull <= SIGNAL_CFG.strongSell) {
+    return {signal:"STRONG SELL", reason:`Bull=${currBull.toFixed(1)} ≤ ${SIGNAL_CFG.strongSell}`, aggression:"aggressive"};
+  }
+  if(crossUp && delta >= 1.5) {
+    return {signal:"BUY (cross)", reason:`Cross up ${SIGNAL_CFG.buyThreshold} with momentum +${delta.toFixed(1)}`, aggression:"moderate"};
+  }
+  if(crossUp && delta < 1.5) {
+    return {signal:"BUY (wait confirm)", reason:`Cross up but low momentum +${delta.toFixed(1)}`, aggression:"cautious"};
+  }
+  if(crossDown) {
+    return {signal:"SELL (cross down)", reason:`Cross down ${SIGNAL_CFG.buyThreshold-5}`, aggression:"moderate"};
+  }
+  if(currBull >= SIGNAL_CFG.holdUpper && currBull < SIGNAL_CFG.strongBuy){
+    return {signal:"HOLD / Watch", reason:`Bull ${currBull.toFixed(1)} in bullish band`, aggression:"watch"};
+  }
+  if(currBull > SIGNAL_CFG.cautious && currBull <= SIGNAL_CFG.holdLower){
+    return {signal:"REDUCE / TIGHTEN STOPS", reason:`Bull ${currBull.toFixed(1)} — cautious zone`, aggression:"conservative"};
+  }
+  return {signal:"HOLD", reason:`Bull ${currBull.toFixed(1)}`, aggression:"neutral"};
+}
+
+// 4) Build trade suggestion (includes SL/TP/size if price known)
+function buildSuggestion(currBull, entryPrice){
+  const sig = getSignal(currBull);
+  const slPct = SIGNAL_CFG.defaultSLpct;
+  const tp1 = SIGNAL_CFG.tp1pct;
+  const tp2 = SIGNAL_CFG.tp2pct;
+  let sizeText;
+  if(entryPrice && entryPrice > 0){
+    const units = calcPositionSize(entryPrice, slPct);
+    const slPrice = +(entryPrice * (1 - slPct)).toFixed(4);
+    const tp1Price = +(entryPrice * (1 + tp1)).toFixed(4);
+    const tp2Price = +(entryPrice * (1 + tp2)).toFixed(4);
+    sizeText = `Entry ${entryPrice}, SL ${slPrice} (-${(slPct*100).toFixed(1)}%), `
+             + `TP1 ${tp1Price} (+${(tp1*100).toFixed(1)}%), `
+             + `TP2 ${tp2Price} (+${(tp2*100).toFixed(1)}%) — `
+             + `Size: ${units} units (risk ${ (SIGNAL_CFG.riskPerTradePct*100).toFixed(1) }% of acct)`;
+  } else {
+    sizeText = `SL: -${(slPct*100).toFixed(1)}%, TP1: +${(tp1*100).toFixed(1)}%, TP2: +${(tp2*100).toFixed(1)}% (set entryPrice for size)`;
+  }
+  return `${sig.signal} — ${sig.reason}\n${sizeText}`;
+}
+
+// 5) Display signals inside guideBox (existing element in your code)
+function showSignalInGuide(currBull, entryPrice){
+  if(typeof guideBox === "undefined") {
+    console.log("GuideBox missing. Signal:", buildSuggestion(currBull, entryPrice));
+    return;
+  }
+  const sig = getSignal(currBull);
+  const color = sig.signal.includes("BUY") ? "lime" : sig.signal.includes("SELL") ? "red" : "yellow";
+  guideBox.innerHTML = `<b>📊 Market Summary:</b><br>${analyzeMarket(currBull,0,0)}<hr>` +
+                       `<b>🔔 Signal:</b> <span style="color:${color};font-weight:bold">${sig.signal}</span><br>` +
+                       `<small>${sig.reason}</small><br><pre style="text-align:left">${buildSuggestion(currBull, window.lastPrice || null)}</pre>`;
+}
+
+// 6) Hook into bull updates
+function onBullUpdate(newBull) {
+  const lastPrice = window.lastPrice || null; // optional: set window.lastPrice somewhere
+  showSignalInGuide(newBull, lastPrice);
+  prevBull = newBull;
+}
+
+// 7) Modify animateNeedle step (call this when animation ends)
+// Example patch — put this inside your animateNeedle() step after drawLineGauge:
+/// if(progress >= 1) { onBullUpdate(currentBull); }
+
+// ================== DISCLAIMER ==================
+// This script is educational only. Thresholds, SL/TP levels, and position sizes
+// are generic examples. Always backtest before live trading. Not financial advice.
+</script>
