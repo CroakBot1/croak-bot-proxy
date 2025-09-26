@@ -1493,19 +1493,23 @@ updateTotalScore = function(){
 
 
 
+
+
+
 <script>
 // ==== FLOATING & DRAGGABLE GAUGE CONTAINER ====
 const topGaugeWrap = document.createElement("div");
 topGaugeWrap.style.cssText = `
-  width: 700px; /* mas dako para sa text */
-  background:#111;
+  width: 720px;
+  background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
   padding:20px;
   text-align:center;
   position:fixed;
   top:20px;
   left:20px;
-  border-radius:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.5);
+  border-radius:15px;
+  border: 2px solid #444;
+  box-shadow:0 6px 20px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.05);
   cursor:move;
   z-index:9999;
   touch-action:none;
@@ -1516,38 +1520,45 @@ document.body.appendChild(topGaugeWrap);
 const title = document.createElement("div");
 title.innerText = "YOUR TRADE";
 title.style.cssText = `
-  font-size:20px;
+  font-size:22px;
   font-weight:bold;
-  color:yellow;
-  margin-bottom:10px;
-  letter-spacing:1px;
+  color:#FFD700;
+  margin-bottom:15px;
+  letter-spacing:2px;
+  text-shadow:0 0 10px rgba(255,215,0,0.7);
 `;
 topGaugeWrap.appendChild(title);
 
 // ==== GAUGE CANVAS ====
 const lineCanvas = document.createElement("canvas");
-lineCanvas.width = 660; // mas dako
-lineCanvas.height = 120; // mas taas para sa labels
+lineCanvas.width = 680; 
+lineCanvas.height = 160; 
 topGaugeWrap.appendChild(lineCanvas);
 
 const lctx = lineCanvas.getContext("2d");
 
+// ==== NEEDLE STATE ====
+let currentBull = 50; 
+let trail = []; 
+
 // ==== DRAW LINE GAUGE ====
-function drawLineGauge(bull, bear){
+function drawLineGauge(bull){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
-  const margin = 50;
+  const margin = 60;
   const startX = margin;
   const endX   = lineCanvas.width - margin;
   const midY   = lineCanvas.height/2;
 
   // Gradient line
   const grad = lctx.createLinearGradient(startX, midY, endX, midY);
-  grad.addColorStop(0,"red");
-  grad.addColorStop(1,"lime");
+  grad.addColorStop(0,"#ff3333");
+  grad.addColorStop(0.5,"#ffff66");
+  grad.addColorStop(1,"#33ff33");
 
-  lctx.lineWidth = 25;
+  lctx.lineWidth = 30;
   lctx.strokeStyle = grad;
+  lctx.lineCap = "round";
   lctx.beginPath();
   lctx.moveTo(startX, midY);
   lctx.lineTo(endX, midY);
@@ -1556,48 +1567,84 @@ function drawLineGauge(bull, bear){
   // Needle position
   const percent = bull/100; 
   const nx = startX + (endX-startX)*percent;
-  const needleTop = midY - 40;
-  const needleBottom = midY + 40;
+  const needleTop = midY - 50;
+  const needleBottom = midY + 50;
 
-  // Draw needle
+  // ==== TRAIL EFFECT ====
+  trail.push(nx);
+  if(trail.length > 20) trail.shift();
+
+  for(let i=0;i<trail.length;i++){
+    const alpha = i / trail.length;
+    lctx.beginPath();
+    lctx.strokeStyle = `rgba(255,255,0,${alpha*0.6})`;
+    lctx.lineWidth = 2;
+    lctx.moveTo(trail[i], needleTop);
+    lctx.lineTo(trail[i], needleBottom);
+    lctx.stroke();
+  }
+
+  // ==== MAIN NEEDLE ====
   lctx.beginPath();
   lctx.strokeStyle = "yellow";
-  lctx.lineWidth = 3;
+  lctx.lineWidth = 4;
+  lctx.shadowColor = "rgba(255,255,0,0.8)";
+  lctx.shadowBlur = 12;
   lctx.moveTo(nx, needleTop);
   lctx.lineTo(nx, needleBottom);
   lctx.stroke();
+  lctx.shadowBlur = 0;
 
-  // Labels
-  lctx.fillStyle = "red";
-  lctx.font = "bold 20px Arial"; // mas dako
+  // Labels (Left & Right)
+  lctx.font = "bold 22px Arial";
   lctx.textAlign = "center";
-  lctx.fillText("Bearish", startX-30, midY+60);
+  lctx.fillStyle = "red";
+  lctx.fillText("BEARISH", startX-40, midY+70);
 
   lctx.fillStyle = "lime";
-  lctx.fillText("Bullish", endX+30, midY+60);
+  lctx.fillText("BULLISH", endX+40, midY+70);
 
-  // Percentage inside needle
-  lctx.font = "bold 18px Arial";  // adjust to fit needle
-  lctx.textAlign = "center";
-  lctx.textBaseline = "middle";
+  // ==== NEW: Neutral Zone Label (Center) ====
+  lctx.fillStyle = "#ffff66";
+  lctx.font = "bold 20px Arial";
+  lctx.fillText("NEUTRAL ZONE", (startX+endX)/2, midY+95);
 
-  // Shadow for readability
-  lctx.shadowColor = "black";
-  lctx.shadowBlur = 4;
-  lctx.shadowOffsetX = 0;
-  lctx.shadowOffsetY = 0;
+  // Percentage box
+  const text = bull.toFixed(1) + "%";
+  lctx.font = "bold 20px Arial";
+  const textWidth = lctx.measureText(text).width;
 
-  // Color coding: red if <50%, green if >=50%
+  lctx.fillStyle = "rgba(0,0,0,0.7)";
+  lctx.fillRect(nx - textWidth/2 - 8, midY - 18, textWidth + 16, 30);
+
   lctx.fillStyle = bull >= 50 ? "lime" : "red";
-
-  lctx.fillText(bull.toFixed(1) + "%", nx, midY);
-
-  lctx.shadowBlur = 0;
+  lctx.textBaseline = "middle";
+  lctx.fillText(text, nx, midY);
 }
 
-// ==== MAKE DIV DRAGGABLE (mouse + touch) ====
-let isDragging = false, offsetX = 0, offsetY = 0;
+// ==== SMOOTH ANIMATION ====
+function animateNeedle(targetBull){
+  const duration = 600; 
+  const start = currentBull;
+  const diff = targetBull - start;
+  const startTime = performance.now();
 
+  function step(now){
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    currentBull = start + diff * eased;
+
+    drawLineGauge(currentBull);
+
+    if(progress < 1){
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// ==== DRAGGABLE DIV ====
+let isDragging = false, offsetX = 0, offsetY = 0;
 function startDrag(clientX, clientY){
   isDragging = true;
   offsetX = clientX - topGaugeWrap.offsetLeft;
@@ -1610,20 +1657,14 @@ function duringDrag(clientX, clientY){
   }
 }
 function stopDrag(){ isDragging=false; }
-
-// Mouse events
 topGaugeWrap.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
 document.addEventListener("mousemove", e => duringDrag(e.clientX, e.clientY));
 document.addEventListener("mouseup", stopDrag);
-
-// Touch events
 topGaugeWrap.addEventListener("touchstart", e => {
-  const t = e.touches[0];
-  startDrag(t.clientX, t.clientY);
+  const t = e.touches[0]; startDrag(t.clientX, t.clientY);
 });
 document.addEventListener("touchmove", e => {
-  const t = e.touches[0];
-  duringDrag(t.clientX, t.clientY);
+  const t = e.touches[0]; duringDrag(t.clientX, t.clientY);
 }, {passive:false});
 document.addEventListener("touchend", stopDrag);
 
@@ -1642,11 +1683,9 @@ updateTotalScore = function(){
 
     drawDistribution(fullHistory);
 
-    if(stats) drawLineGauge(stats.bull, stats.bear);
+    if(stats) animateNeedle(stats.bull);
   }
   return total;
 };
 </script>
-
-
 
