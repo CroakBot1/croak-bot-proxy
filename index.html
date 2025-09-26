@@ -1490,15 +1490,16 @@ topGaugeWrap.style.cssText = `
   background:#111;
   padding:20px;
   text-align:center;
-  position:fixed;   /* ✅ floating, not relative */
+  position:fixed;
   top:20px;
   left:20px;
   border-radius:10px;
   box-shadow:0 4px 10px rgba(0,0,0,0.5);
-  cursor:move;      /* ✅ cursor shows draggable */
+  cursor:move;
   z-index:9999;
+  touch-action:none;   /* ✅ important for mobile drag */
 `;
-document.body.appendChild(topGaugeWrap); // floating, not prepend
+document.body.appendChild(topGaugeWrap);
 
 const lineCanvas = document.createElement("canvas");
 lineCanvas.width = 560; 
@@ -1516,7 +1517,6 @@ function drawLineGauge(bull, bear){
   let endX   = lineCanvas.width - margin;
   let midY   = lineCanvas.height/2;
 
-  // gradient line (red → green)
   let grad = lctx.createLinearGradient(startX, midY, endX, midY);
   grad.addColorStop(0,"red");
   grad.addColorStop(1,"lime");
@@ -1528,7 +1528,6 @@ function drawLineGauge(bull, bear){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
-  // needle (based on bullish %)
   let percent = bull/100; 
   let nx = startX + (endX-startX)*percent;
 
@@ -1539,7 +1538,6 @@ function drawLineGauge(bull, bear){
   lctx.lineTo(nx, midY+30);
   lctx.stroke();
 
-  // labels
   lctx.fillStyle="red";
   lctx.font="14px Arial";
   lctx.fillText("Bearish", startX-30, midY+40);
@@ -1552,21 +1550,37 @@ function drawLineGauge(bull, bear){
   lctx.fillText(bull.toFixed(1)+"%", nx-15, midY-35);
 }
 
-// ==== MAKE DIV DRAGGABLE ====
+// ==== MAKE DIV DRAGGABLE (mouse + touch) ====
 let isDragging=false, offsetX=0, offsetY=0;
 
-topGaugeWrap.addEventListener("mousedown", e=>{
+function startDrag(clientX, clientY){
   isDragging = true;
-  offsetX = e.clientX - topGaugeWrap.offsetLeft;
-  offsetY = e.clientY - topGaugeWrap.offsetTop;
-});
-document.addEventListener("mousemove", e=>{
+  offsetX = clientX - topGaugeWrap.offsetLeft;
+  offsetY = clientY - topGaugeWrap.offsetTop;
+}
+function duringDrag(clientX, clientY){
   if(isDragging){
-    topGaugeWrap.style.left = (e.clientX - offsetX) + "px";
-    topGaugeWrap.style.top  = (e.clientY - offsetY) + "px";
+    topGaugeWrap.style.left = (clientX - offsetX) + "px";
+    topGaugeWrap.style.top  = (clientY - offsetY) + "px";
   }
+}
+function stopDrag(){ isDragging=false; }
+
+// Mouse events
+topGaugeWrap.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
+document.addEventListener("mousemove", e => duringDrag(e.clientX, e.clientY));
+document.addEventListener("mouseup", stopDrag);
+
+// Touch events
+topGaugeWrap.addEventListener("touchstart", e => {
+  const t = e.touches[0];
+  startDrag(t.clientX, t.clientY);
 });
-document.addEventListener("mouseup", ()=> isDragging=false);
+document.addEventListener("touchmove", e => {
+  const t = e.touches[0];
+  duringDrag(t.clientX, t.clientY);
+}, {passive:false});
+document.addEventListener("touchend", stopDrag);
 
 // ==== HOOK UPDATE EXTENSION ====
 const _updateTotalScoreTop=updateTotalScore;
@@ -1578,18 +1592,16 @@ updateTotalScore=function(){
 
     let stats=calcStats(fullHistory);
 
-    // update summary (retain existing)
     guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
                        "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
 
-    // draw histogram
     drawDistribution(fullHistory);
 
-    // draw floating line gauge
     if(stats) drawLineGauge(stats.bull, stats.bear);
   }
   return total;
 };
 </script>
+
 
 
