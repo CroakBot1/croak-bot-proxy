@@ -1470,68 +1470,19 @@ updateTotalScore = function(){
 
 
 <script>
-// ==== GAUGE WRAPPER ====
-const gaugeWrap = document.createElement("div");
-gaugeWrap.style.cssText = `margin:12px 0;background:#111;padding:10px;border-radius:6px;text-align:center;`;
-const gaugeCanvas = document.createElement("canvas");
-gaugeCanvas.width = 300; 
-gaugeCanvas.height = 160;
-gaugeWrap.appendChild(gaugeCanvas);
-distWrap.insertAdjacentElement("afterend", gaugeWrap);
-const gctx = gaugeCanvas.getContext("2d");
+// ==== SUPER ANALYZER ====
+function superAnalyze(){
+  let stats=calcStats(fullHistory);
+  if(!stats) return "Waiting for enough runs...";
 
-// ==== DRAW NEEDLE GAUGE ====
-function drawGauge(bull, bear){
-  gctx.clearRect(0,0,gaugeCanvas.width,gaugeCanvas.height);
+  // text summary (with bullish & bearish probability)
+  let msg=`Avg: ${stats.avg.toFixed(1)}% • Median: ${stats.mid.toFixed(1)}%<br>
+           Range: ${stats.min.toFixed(0)}–${stats.max.toFixed(0)}% • Volatility σ=${stats.stdev.toFixed(1)}<br>
+           🐂 Bullish Probability: ${stats.bull.toFixed(1)}% • 🐻 Bearish Probability: ${stats.bear.toFixed(1)}%<br>
+           📊 Risk Level: <b>${stats.risk}</b><br>
+           <div id="gaugeHere"></div>`;   // ✅ placeholder for gauge
 
-  let cx = gaugeCanvas.width/2;
-  let cy = gaugeCanvas.height*0.9;
-  let radius = 70;
-
-  // background arc (bearish = red, bullish = green)
-  gctx.lineWidth = 15;
-  let startAngle = Math.PI;       // 180°
-  let endAngle   = 0;             // 0° (half circle)
-
-  // Bearish arc
-  gctx.beginPath();
-  gctx.strokeStyle="red";
-  gctx.arc(cx, cy, radius, startAngle, startAngle + Math.PI*(bear/100), false);
-  gctx.stroke();
-
-  // Bullish arc
-  gctx.beginPath();
-  gctx.strokeStyle="lime";
-  gctx.arc(cx, cy, radius, startAngle + Math.PI*(bear/100), startAngle+Math.PI, false);
-  gctx.stroke();
-
-  // needle position (based on bullish %)
-  let percent = bull; // 0–100
-  let angle = Math.PI - (percent/100)*Math.PI; // convert to rad
-  let nx = cx + radius*Math.cos(angle);
-  let ny = cy + radius*Math.sin(angle);
-
-  // draw needle
-  gctx.beginPath();
-  gctx.strokeStyle="yellow";
-  gctx.lineWidth=3;
-  gctx.moveTo(cx,cy);
-  gctx.lineTo(nx,ny);
-  gctx.stroke();
-
-  // center circle
-  gctx.beginPath();
-  gctx.fillStyle="#fff";
-  gctx.arc(cx,cy,5,0,Math.PI*2);
-  gctx.fill();
-
-  // labels
-  gctx.fillStyle="red";
-  gctx.fillText("Bearish", 30, cy-10);
-  gctx.fillStyle="lime";
-  gctx.fillText("Bullish", gaugeCanvas.width-70, cy-10);
-  gctx.fillStyle="yellow";
-  gctx.fillText(percent.toFixed(1)+"%", cx-15, cy-80);
+  return msg;
 }
 
 // ==== HOOK UPDATE EXTENSION (override again) ====
@@ -1544,16 +1495,23 @@ updateTotalScore=function(){
 
     let stats=calcStats(fullHistory);
 
-    // update summary
+    // update summary (with placeholder)
     guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
                        "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
 
     // draw histogram
     drawDistribution(fullHistory);
 
-    // draw gauge (if stats available)
-    if(stats) drawGauge(stats.bull, stats.bear);
+    // draw gauge sa placeholder
+    if(stats){
+      let container=document.getElementById("gaugeHere");
+      if(container && container.childNodes.length===0){ 
+        container.appendChild(gaugeCanvas); // move canvas under probabilities
+      }
+      drawGauge(stats.bull, stats.bear);
+    }
   }
   return total;
 };
 </script>
+
