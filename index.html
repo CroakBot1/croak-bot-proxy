@@ -1476,20 +1476,27 @@ updateTotalScore = function(){
 
 
 
+
+
+
+
+
+
 <script>
 // ==== TOP LINE GAUGE CONTAINER ====
 const topGaugeWrap = document.createElement("div");
 topGaugeWrap.style.cssText = `
   width:100%;
-  background:#111;
+  background:#111a;
+  backdrop-filter: blur(4px);
   padding:20px;
   text-align:center;
-  position:relative;
+  position:fixed;   /* ✅ floating fixed on top */
   top:0;
   left:0;
   z-index:9999;
 `;
-document.body.prepend(topGaugeWrap); // ✅ ibutang sa pinaka-top
+document.body.prepend(topGaugeWrap); 
 
 const lineCanvas = document.createElement("canvas");
 lineCanvas.width = window.innerWidth - 40; 
@@ -1498,9 +1505,9 @@ topGaugeWrap.appendChild(lineCanvas);
 
 const lctx = lineCanvas.getContext("2d");
 
-// ==== NEEDLE STATE ====
-let currentBull = 0;   // actual needle position
-let targetBull = 0;    // target nga value
+// ==== GAUGE STATE ====
+let bullValue = 50;  // default 50%
+let isDragging = false;
 
 // ==== DRAW LINE GAUGE ====
 function drawLineGauge(bull){
@@ -1511,7 +1518,7 @@ function drawLineGauge(bull){
   let endX   = lineCanvas.width - margin;
   let midY   = lineCanvas.height/2;
 
-  // flooring line (red to green gradient)
+  // gradient line (red → green)
   let grad = lctx.createLinearGradient(startX, midY, endX, midY);
   grad.addColorStop(0,"red");
   grad.addColorStop(1,"lime");
@@ -1523,7 +1530,7 @@ function drawLineGauge(bull){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
-  // needle position
+  // needle
   let percent = bull/100;
   let nx = startX + (endX-startX)*percent;
 
@@ -1547,16 +1554,32 @@ function drawLineGauge(bull){
   lctx.fillText(bull.toFixed(1)+"%", nx-15, midY-35);
 }
 
-// ==== ANIMATE NEEDLE ====
-function animateGauge(){
-  if(Math.abs(targetBull - currentBull) > 0.1){
-    currentBull += (targetBull - currentBull) * 0.1; // easing
-    drawLineGauge(currentBull);
-    requestAnimationFrame(animateGauge);
-  } else {
-    currentBull = targetBull;
-    drawLineGauge(currentBull);
-  }
+// ==== DRAG EVENTS ====
+lineCanvas.addEventListener("mousedown", e=>{
+  isDragging = true;
+  updateNeedleFromMouse(e);
+});
+lineCanvas.addEventListener("mousemove", e=>{
+  if(isDragging) updateNeedleFromMouse(e);
+});
+lineCanvas.addEventListener("mouseup", ()=>{ isDragging=false; });
+lineCanvas.addEventListener("mouseleave", ()=>{ isDragging=false; });
+
+function updateNeedleFromMouse(e){
+  let rect = lineCanvas.getBoundingClientRect();
+  let margin = 40;
+  let startX = margin;
+  let endX   = lineCanvas.width - margin;
+  let x = e.clientX - rect.left;
+
+  // clamp
+  if(x < startX) x = startX;
+  if(x > endX) x = endX;
+
+  let percent = (x - startX) / (endX-startX);
+  bullValue = percent*100;
+
+  drawLineGauge(bullValue);
 }
 
 // ==== HOOK UPDATE EXTENSION ====
@@ -1569,24 +1592,22 @@ updateTotalScore=function(){
 
     let stats=calcStats(fullHistory);
 
-    // update summary
+    // update summary (retain existing)
     guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
                        "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
 
     // draw histogram
     drawDistribution(fullHistory);
 
-    // update gauge target (animate to new position)
-    if(stats){
-      targetBull = stats.bull;
-      animateGauge();
+    // update floating gauge only if not dragging
+    if(stats && !isDragging){
+      bullValue = stats.bull; // auto-update from stats
+      drawLineGauge(bullValue);
     }
   }
   return total;
 };
+
+// ==== Initial Draw ====
+drawLineGauge(bullValue);
 </script>
-
-
-
-
-
