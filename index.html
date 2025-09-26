@@ -1499,180 +1499,199 @@ updateTotalScore = function(){
 
 
 
+ 
+
+
+
 <script>
-// ==== FUNCTION TO CHECK IF AN OVERLAY EXISTS ====
-function hasOverlay() {
-  // Example: kung ang overlay naa'y class "overlay" or "modal"
-  const overlays = document.querySelectorAll(".overlay, .modal, .popup, .backdrop");
-  for (let o of overlays) {
-    const style = window.getComputedStyle(o);
-    if (style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0") {
-      return true; // naa gyud overlay visible
-    }
-  }
-  return false;
+// ==== FLOATING & DRAGGABLE GAUGE CONTAINER ====
+const topGaugeWrap = document.createElement("div");
+topGaugeWrap.style.cssText = `
+  width: 720px;
+  background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+  padding:20px;
+  text-align:center;
+  position:fixed;
+  top:20px;
+  left:20px;
+  border-radius:15px;
+  border: 2px solid #444;
+  box-shadow:0 6px 20px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.05);
+  cursor:move;
+  z-index:9999;
+  touch-action:none;
+`;
+document.body.appendChild(topGaugeWrap);
+
+// ==== TITLE TEXT ====
+const title = document.createElement("div");
+title.innerText = "YOUR TRADE";
+title.style.cssText = `
+  font-size:22px;
+  font-weight:bold;
+  color:#FFD700;
+  margin-bottom:15px;
+  letter-spacing:2px;
+  text-shadow:0 0 10px rgba(255,215,0,0.7);
+`;
+topGaugeWrap.appendChild(title);
+
+// ==== GAUGE CANVAS ====
+const lineCanvas = document.createElement("canvas");
+lineCanvas.width = 680; 
+lineCanvas.height = 160; 
+topGaugeWrap.appendChild(lineCanvas);
+
+const lctx = lineCanvas.getContext("2d");
+
+// ==== NEEDLE STATE ====
+let currentBull = 50; 
+let trail = []; 
+
+// ==== DRAW LINE GAUGE ====
+function drawLineGauge(bull){
+  lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
+
+  const margin = 60;
+  const startX = margin;
+  const endX   = lineCanvas.width - margin;
+  const midY   = lineCanvas.height/2;
+
+  // Gradient line
+  const grad = lctx.createLinearGradient(startX, midY, endX, midY);
+  grad.addColorStop(0,"#ff3333");
+  grad.addColorStop(0.5,"#ffff66");
+  grad.addColorStop(1,"#33ff33");
+
+  lctx.lineWidth = 30;
+  lctx.strokeStyle = grad;
+  lctx.lineCap = "round";
+  lctx.beginPath();
+  lctx.moveTo(startX, midY);
+  lctx.lineTo(endX, midY);
+  lctx.stroke();
+
+  // Needle position
+  const percent = bull/100; 
+  const nx = startX + (endX-startX)*percent;
+  const needleTop = midY - 50;
+  const needleBottom = midY + 50;
+
+  // ==== TRAIL EFFECT ====
+  trail.push(nx);
+  if(trail.length > 20) trail.shift();
+
+  for(let i=0;i<trail.length;i++){
+    const alpha = i / trail.length;
+    lctx.beginPath();
+    lctx.strokeStyle = `rgba(255,255,0,${alpha*0.6})`;
+    lctx.lineWidth = 2;
+    lctx.moveTo(trail[i], needleTop);
+    lctx.lineTo(trail[i], needleBottom);
+    lctx.stroke();
+  }
+
+  // ==== MAIN NEEDLE ====
+  lctx.beginPath();
+  lctx.strokeStyle = "yellow";
+  lctx.lineWidth = 4;
+  lctx.shadowColor = "rgba(255,255,0,0.8)";
+  lctx.shadowBlur = 12;
+  lctx.moveTo(nx, needleTop);
+  lctx.lineTo(nx, needleBottom);
+  lctx.stroke();
+  lctx.shadowBlur = 0;
+
+  // Labels (Left & Right)
+  lctx.font = "bold 22px Arial";
+  lctx.textAlign = "center";
+  lctx.fillStyle = "red";
+  lctx.fillText("BEARISH", startX-40, midY+70);
+
+  lctx.fillStyle = "lime";
+  lctx.fillText("BULLISH", endX+40, midY+70);
+
+  // ==== NEW: Neutral Zone Label (Center) ====
+  lctx.fillStyle = "#ffff66";
+  lctx.font = "bold 20px Arial";
+  lctx.fillText("NEUTRAL ZONE", (startX+endX)/2, midY+95);
+
+  // Percentage box
+  const text = bull.toFixed(1) + "%";
+  lctx.font = "bold 20px Arial";
+  const textWidth = lctx.measureText(text).width;
+
+  lctx.fillStyle = "rgba(0,0,0,0.7)";
+  lctx.fillRect(nx - textWidth/2 - 8, midY - 18, textWidth + 16, 30);
+
+  lctx.fillStyle = bull >= 50 ? "lime" : "red";
+  lctx.textBaseline = "middle";
+  lctx.fillText(text, nx, midY);
 }
 
-// ==== ONLY SHOW GAUGE IF WALAY OVERLAY ====
-if (!hasOverlay()) {
-  const topGaugeWrap = document.createElement("div");
-  topGaugeWrap.style.cssText = `
-    width: 720px;
-    background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-    padding:20px;
-    text-align:center;
-    position:fixed;
-    top:20px;
-    left:20px;
-    border-radius:15px;
-    border: 2px solid #444;
-    box-shadow:0 6px 20px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.05);
-    cursor:move;
-    z-index:9999;
-    touch-action:none;
-  `;
-  document.body.appendChild(topGaugeWrap);
+// ==== SMOOTH ANIMATION ====
+function animateNeedle(targetBull){
+  const duration = 600; 
+  const start = currentBull;
+  const diff = targetBull - start;
+  const startTime = performance.now();
 
-  // ==== TITLE TEXT ====
-  const title = document.createElement("div");
-  title.innerText = "YOUR TRADE";
-  title.style.cssText = `
-    font-size:22px;
-    font-weight:bold;
-    color:#FFD700;
-    margin-bottom:15px;
-    letter-spacing:2px;
-    text-shadow:0 0 10px rgba(255,215,0,0.7);
-  `;
-  topGaugeWrap.appendChild(title);
+  function step(now){
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    currentBull = start + diff * eased;
 
-  // ==== GAUGE CANVAS ====
-  const lineCanvas = document.createElement("canvas");
-  lineCanvas.width = 680; 
-  lineCanvas.height = 160; 
-  topGaugeWrap.appendChild(lineCanvas);
+    drawLineGauge(currentBull);
 
-  const lctx = lineCanvas.getContext("2d");
-
-  // ==== NEEDLE STATE ====
-  let currentBull = 50; 
-  let trail = []; 
-
-  // ==== DRAW LINE GAUGE ====
-  function drawLineGauge(bull){
-    lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
-
-    const margin = 60;
-    const startX = margin;
-    const endX   = lineCanvas.width - margin;
-    const midY   = lineCanvas.height/2;
-
-    // Gradient line
-    const grad = lctx.createLinearGradient(startX, midY, endX, midY);
-    grad.addColorStop(0,"#ff3333");
-    grad.addColorStop(0.5,"#ffff66");
-    grad.addColorStop(1,"#33ff33");
-
-    lctx.lineWidth = 30;
-    lctx.strokeStyle = grad;
-    lctx.lineCap = "round";
-    lctx.beginPath();
-    lctx.moveTo(startX, midY);
-    lctx.lineTo(endX, midY);
-    lctx.stroke();
-
-    // Needle position
-    const percent = bull/100; 
-    const nx = startX + (endX-startX)*percent;
-    const needleTop = midY - 50;
-    const needleBottom = midY + 50;
-
-    // Trail
-    trail.push(nx);
-    if(trail.length > 20) trail.shift();
-    for(let i=0;i<trail.length;i++){
-      const alpha = i / trail.length;
-      lctx.beginPath();
-      lctx.strokeStyle = `rgba(255,255,0,${alpha*0.6})`;
-      lctx.lineWidth = 2;
-      lctx.moveTo(trail[i], needleTop);
-      lctx.lineTo(trail[i], needleBottom);
-      lctx.stroke();
-    }
-
-    // Main needle
-    lctx.beginPath();
-    lctx.strokeStyle = "yellow";
-    lctx.lineWidth = 4;
-    lctx.shadowColor = "rgba(255,255,0,0.8)";
-    lctx.shadowBlur = 12;
-    lctx.moveTo(nx, needleTop);
-    lctx.lineTo(nx, needleBottom);
-    lctx.stroke();
-    lctx.shadowBlur = 0;
-
-    // Labels
-    lctx.font = "bold 22px Arial";
-    lctx.textAlign = "center";
-    lctx.fillStyle = "red";
-    lctx.fillText("BEARISH", startX-40, midY+70);
-
-    lctx.fillStyle = "lime";
-    lctx.fillText("BULLISH", endX+40, midY+70);
-
-    // Neutral zone
-    lctx.fillStyle = "#ffff66";
-    lctx.font = "bold 20px Arial";
-    lctx.fillText("NEUTRAL ZONE", (startX+endX)/2, midY+95);
-
-    // Percentage box
-    const text = bull.toFixed(1) + "%";
-    lctx.font = "bold 20px Arial";
-    const textWidth = lctx.measureText(text).width;
-
-    lctx.fillStyle = "rgba(0,0,0,0.7)";
-    lctx.fillRect(nx - textWidth/2 - 8, midY - 18, textWidth + 16, 30);
-
-    lctx.fillStyle = bull >= 50 ? "lime" : "red";
-    lctx.textBaseline = "middle";
-    lctx.fillText(text, nx, midY);
-  }
-
-  // Animate needle
-  function animateNeedle(targetBull){
-    const duration = 600; 
-    const start = currentBull;
-    const diff = targetBull - start;
-    const startTime = performance.now();
-
-    function step(now){
-      const progress = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      currentBull = start + diff * eased;
-      drawLineGauge(currentBull);
-      if(progress < 1){ requestAnimationFrame(step); }
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Hook update extension
-  const _updateTotalScoreTop = updateTotalScore;
-  updateTotalScore = function(){
-    const total = _updateTotalScoreTop();
-    if(total != null){
-      fullHistory.push(total);
-      if(fullHistory.length > maxRuns) fullHistory.shift();
-
-      const stats = calcStats(fullHistory);
-
-      guideBox.innerHTML = "<b>📊 Market Summary:</b><br>" + analyzeMarket(total,0,0) +
-                           "<hr><b>📈 1000-Runs Analysis:</b><br>" + superAnalyze();
-
-      drawDistribution(fullHistory);
-
-      if(stats) animateNeedle(stats.bull);
-    }
-    return total;
-  };
+    if(progress < 1){
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
 }
+
+// ==== DRAGGABLE DIV ====
+let isDragging = false, offsetX = 0, offsetY = 0;
+function startDrag(clientX, clientY){
+  isDragging = true;
+  offsetX = clientX - topGaugeWrap.offsetLeft;
+  offsetY = clientY - topGaugeWrap.offsetTop;
+}
+function duringDrag(clientX, clientY){
+  if(isDragging){
+    topGaugeWrap.style.left = (clientX - offsetX) + "px";
+    topGaugeWrap.style.top  = (clientY - offsetY) + "px";
+  }
+}
+function stopDrag(){ isDragging=false; }
+topGaugeWrap.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
+document.addEventListener("mousemove", e => duringDrag(e.clientX, e.clientY));
+document.addEventListener("mouseup", stopDrag);
+topGaugeWrap.addEventListener("touchstart", e => {
+  const t = e.touches[0]; startDrag(t.clientX, t.clientY);
+});
+document.addEventListener("touchmove", e => {
+  const t = e.touches[0]; duringDrag(t.clientX, t.clientY);
+}, {passive:false});
+document.addEventListener("touchend", stopDrag);
+
+// ==== HOOK UPDATE EXTENSION ====
+const _updateTotalScoreTop = updateTotalScore;
+updateTotalScore = function(){
+  const total = _updateTotalScoreTop();
+  if(total != null){
+    fullHistory.push(total);
+    if(fullHistory.length > maxRuns) fullHistory.shift();
+
+    const stats = calcStats(fullHistory);
+
+    guideBox.innerHTML = "<b>📊 Market Summary:</b><br>" + analyzeMarket(total,0,0) +
+                         "<hr><b>📈 1000-Runs Analysis:</b><br>" + superAnalyze();
+
+    drawDistribution(fullHistory);
+
+    if(stats) animateNeedle(stats.bull);
+  }
+  return total;
+};
 </script>
