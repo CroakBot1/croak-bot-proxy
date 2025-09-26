@@ -1521,16 +1521,16 @@ topGaugeWrap.appendChild(lineCanvas);
 
 const lctx = lineCanvas.getContext("2d");
 
-// ==== DRAW LINE GAUGE (WITH CLEAR PERCENTAGE) ====
+// ==== DRAW LINE GAUGE ====
 function drawLineGauge(bull, bear){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
   const margin = 40;
   const startX = margin;
-  const endX = lineCanvas.width - margin;
-  const midY = lineCanvas.height/2;
+  const endX   = lineCanvas.width - margin;
+  const midY   = lineCanvas.height/2;
 
-  // gradient line
+  // Gradient line
   const grad = lctx.createLinearGradient(startX, midY, endX, midY);
   grad.addColorStop(0,"red");
   grad.addColorStop(1,"lime");
@@ -1542,36 +1542,48 @@ function drawLineGauge(bull, bear){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
-  // needle
-  const percent = bull / 100; 
-  const nx = startX + (endX - startX) * percent;
+  // Needle position
+  const percent = bull/100; 
+  const nx = startX + (endX-startX)*percent;
+  const needleTop = midY - 35;
+  const needleBottom = midY + 35;
 
+  // Draw needle
   lctx.beginPath();
   lctx.strokeStyle = "yellow";
   lctx.lineWidth = 3;
-  lctx.moveTo(nx, midY-30);
-  lctx.lineTo(nx, midY+30);
+  lctx.moveTo(nx, needleTop);
+  lctx.lineTo(nx, needleBottom);
   lctx.stroke();
 
-  // labels
+  // Labels
   lctx.fillStyle = "red";
-  lctx.font = "14px Arial";
-  lctx.fillText("Bearish", startX-30, midY+40);
+  lctx.font = "bold 16px Arial";
+  lctx.textAlign = "center";
+  lctx.fillText("Bearish", startX-20, midY+45);
 
   lctx.fillStyle = "lime";
-  lctx.fillText("Bullish", endX-30, midY+40);
+  lctx.fillText("Bullish", endX+20, midY+45);
 
-  // clear percentage text with black outline
-  lctx.font = "bold 20px Arial";
+  // Percentage text with shadow for readability
+  lctx.font = "bold 24px Arial";
   lctx.textAlign = "center";
   lctx.textBaseline = "bottom";
 
+  const percentY = needleTop - 5; // move percentage above needle
+  lctx.shadowColor = "black";
+  lctx.shadowBlur = 6;
+  lctx.shadowOffsetX = 0;
+  lctx.shadowOffsetY = 0;
+
   lctx.lineWidth = 4;
   lctx.strokeStyle = "black";
-  lctx.strokeText(bull.toFixed(1) + "%", nx, midY - 35);
+  lctx.strokeText(bull.toFixed(1) + "%", nx, percentY);
 
   lctx.fillStyle = "yellow";
-  lctx.fillText(bull.toFixed(1) + "%", nx, midY - 35);
+  lctx.fillText(bull.toFixed(1) + "%", nx, percentY);
+
+  lctx.shadowBlur = 0;
 }
 
 // ==== MAKE DIV DRAGGABLE (mouse + touch) ====
@@ -1588,7 +1600,7 @@ function duringDrag(clientX, clientY){
     topGaugeWrap.style.top  = (clientY - offsetY) + "px";
   }
 }
-function stopDrag(){ isDragging = false; }
+function stopDrag(){ isDragging=false; }
 
 // Mouse events
 topGaugeWrap.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
@@ -1626,6 +1638,8 @@ updateTotalScore = function(){
   return total;
 };
 </script>
+
+
 
 
 
