@@ -1565,12 +1565,19 @@ function drawLineGauge(bull, bear){
   lctx.fillStyle = "lime";
   lctx.fillText("Bullish", endX+20, midY+45);
 
-  // Percentage text with shadow for readability
+  // Percentage text with shadow and edge adjustment
   lctx.font = "bold 24px Arial";
   lctx.textAlign = "center";
   lctx.textBaseline = "bottom";
 
-  const percentY = needleTop - 5; // move percentage above needle
+  let percentX = nx;
+  const percentY = needleTop - 5;
+
+  // Prevent text from going outside canvas
+  const textWidth = lctx.measureText(bull.toFixed(1) + "%").width;
+  if (percentX - textWidth/2 < 0) percentX = textWidth/2;
+  if (percentX + textWidth/2 > lineCanvas.width) percentX = lineCanvas.width - textWidth/2;
+
   lctx.shadowColor = "black";
   lctx.shadowBlur = 6;
   lctx.shadowOffsetX = 0;
@@ -1578,10 +1585,10 @@ function drawLineGauge(bull, bear){
 
   lctx.lineWidth = 4;
   lctx.strokeStyle = "black";
-  lctx.strokeText(bull.toFixed(1) + "%", nx, percentY);
+  lctx.strokeText(bull.toFixed(1) + "%", percentX, percentY);
 
   lctx.fillStyle = "yellow";
-  lctx.fillText(bull.toFixed(1) + "%", nx, percentY);
+  lctx.fillText(bull.toFixed(1) + "%", percentX, percentY);
 
   lctx.shadowBlur = 0;
 }
@@ -1638,6 +1645,7 @@ updateTotalScore = function(){
   return total;
 };
 </script>
+
 
 
 
