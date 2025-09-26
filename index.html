@@ -1498,8 +1498,12 @@ topGaugeWrap.appendChild(lineCanvas);
 
 const lctx = lineCanvas.getContext("2d");
 
+// ==== NEEDLE STATE ====
+let currentBull = 0;   // actual needle position
+let targetBull = 0;    // target nga value
+
 // ==== DRAW LINE GAUGE ====
-function drawLineGauge(bull, bear){
+function drawLineGauge(bull){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
   let margin = 40;
@@ -1507,7 +1511,7 @@ function drawLineGauge(bull, bear){
   let endX   = lineCanvas.width - margin;
   let midY   = lineCanvas.height/2;
 
-  // gradient line (red to green)
+  // flooring line (red to green gradient)
   let grad = lctx.createLinearGradient(startX, midY, endX, midY);
   grad.addColorStop(0,"red");
   grad.addColorStop(1,"lime");
@@ -1519,8 +1523,8 @@ function drawLineGauge(bull, bear){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
-  // needle (based on bullish %)
-  let percent = bull/100; // 0–1
+  // needle position
+  let percent = bull/100;
   let nx = startX + (endX-startX)*percent;
 
   lctx.beginPath();
@@ -1530,7 +1534,7 @@ function drawLineGauge(bull, bear){
   lctx.lineTo(nx, midY+30);
   lctx.stroke();
 
-  // label text
+  // labels
   lctx.fillStyle="red";
   lctx.font="14px Arial";
   lctx.fillText("Bearish", startX-30, midY+40);
@@ -1543,6 +1547,18 @@ function drawLineGauge(bull, bear){
   lctx.fillText(bull.toFixed(1)+"%", nx-15, midY-35);
 }
 
+// ==== ANIMATE NEEDLE ====
+function animateGauge(){
+  if(Math.abs(targetBull - currentBull) > 0.1){
+    currentBull += (targetBull - currentBull) * 0.1; // easing
+    drawLineGauge(currentBull);
+    requestAnimationFrame(animateGauge);
+  } else {
+    currentBull = targetBull;
+    drawLineGauge(currentBull);
+  }
+}
+
 // ==== HOOK UPDATE EXTENSION ====
 const _updateTotalScoreTop=updateTotalScore;
 updateTotalScore=function(){
@@ -1553,18 +1569,24 @@ updateTotalScore=function(){
 
     let stats=calcStats(fullHistory);
 
-    // update summary (retain existing)
+    // update summary
     guideBox.innerHTML="<b>📊 Market Summary:</b><br>"+analyzeMarket(total,0,0)+
                        "<hr><b>📈 1000-Runs Analysis:</b><br>"+superAnalyze();
 
     // draw histogram
     drawDistribution(fullHistory);
 
-    // draw top line gauge
-    if(stats) drawLineGauge(stats.bull, stats.bear);
+    // update gauge target (animate to new position)
+    if(stats){
+      targetBull = stats.bull;
+      animateGauge();
+    }
   }
   return total;
 };
 </script>
+
+
+
 
 
