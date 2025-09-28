@@ -2363,21 +2363,4 @@ updateCryptoSession();
 
 
 
-<script>
-// === GLOW EFFECT ===
-const glowStyle = document.createElement("style");
-glowStyle.innerHTML = `
-@keyframes glowPulse {
-  0% { box-shadow: 0 0 10px rgba(255, 255, 0, 0.6); }
-  50% { box-shadow: 0 0 20px rgba(255, 255, 0, 1); }
-  100% { box-shadow: 0 0 10px rgba(255, 255, 0, 0.6); }
-}
-.forecast-glow {
-  animation: glowPulse 1.5s infinite;
-}
-`;
-document.head.appendChild(glowStyle);
 
-// === APPLY GLOW TO FORECAST BOX ===
-forecastBox.classList.add("forecast-glow");
-</script>
