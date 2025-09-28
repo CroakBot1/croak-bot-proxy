@@ -1711,6 +1711,86 @@ updateTotalScore = function(){
 
 
 
+
+
+
+
+
+<script>
+// ==== MOMENTUM ARROW (NEW) ====
+
+// container para sa momentum status
+const momentumBox = document.createElement("div");
+momentumBox.style.cssText = `
+  font-size:18px;
+  font-weight:bold;
+  margin-top:12px;
+  color:white;
+  text-shadow:0 0 8px rgba(255,255,255,0.5);
+`;
+topGaugeWrap.appendChild(momentumBox);
+
+let lastBull = null;
+
+// function para update momentum
+function updateMomentum(current){
+  if(lastBull === null){
+    momentumBox.innerHTML = "⏳ Waiting data...";
+  } else {
+    const diff = current - lastBull;
+    if(diff > 0.3){ // threshold para dili sigeg flicker
+      momentumBox.innerHTML = `<span style="color:lime;">📈 Pa-BULLISH ↑</span>`;
+    } else if(diff < -0.3){
+      momentumBox.innerHTML = `<span style="color:red;">📉 Pa-BEARISH ↓</span>`;
+    } else {
+      momentumBox.innerHTML = `<span style="color:yellow;">➖ Neutral ➖</span>`;
+    }
+  }
+  lastBull = current;
+}
+
+// ==== I-tweak ang animateNeedle para update momentum ====
+function animateNeedle(targetBull){
+  const duration = 600; 
+  const start = currentBull;
+  const diff = targetBull - start;
+  const startTime = performance.now();
+
+  function step(now){
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    currentBull = start + diff * eased;
+
+    drawLineGauge(currentBull);
+
+    if(progress < 1){
+      requestAnimationFrame(step);
+    } else {
+      // update momentum only at the end of move
+      updateMomentum(currentBull);
+    }
+  }
+  requestAnimationFrame(step);
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <script>
 // === TRADING SIGNALS EXTENSION ===
 // (Add-on script covering points 1–7)
