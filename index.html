@@ -2199,42 +2199,149 @@ function onBullUpdate(newBull) {
 
 
 
+
 <script>
-// ==== TRADING SESSIONS (FOREX style, GMT+8 Philippine Time) ====
-function getTradingSession(){
+// ==== ADD SOUND ALERT ====
+const overlapSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+overlapSound.volume = 0.6;
+
+// ==== CRYPTO TRADING SESSIONS WITH OVERLAP + ALERT ====
+let lastOverlap = "";
+
+function getCryptoSessionInfo(){
   const now = new Date();
   const hours = now.getHours();
+  const minutes = now.getMinutes();
 
-  if(hours >= 5 && hours < 14){
-    return "Sydney Session 🇦🇺 (5AM - 2PM)";
-  } 
-  else if(hours >= 7 && hours < 16){
-    return "Tokyo Session 🇯🇵 (7AM - 4PM)";
-  } 
-  else if(hours >= 15 && hours < 24){
-    return "London Session 🇬🇧 (3PM - 12AM)";
-  } 
-  else {
-    // from 12AM - 5AM, New York overlaps
-    return "New York Session 🇺🇸 (8PM - 5AM)";
+  let sessionName = "";
+  let endHour = 0;
+  let color = "#00e6e6"; 
+  let nextSession = "";
+  let overlapMsg = "";
+
+  // ==== Session Logic ====
+  if(hours >= 8 && hours < 16){
+    sessionName = "🌏 Asian Session (8AM - 4PM)";
+    endHour = 16;
+    color = "#00e6e6";
+    nextSession = "🇪🇺 Europe Session (3PM - 11PM)";
+
+    if(hours >= 15 && hours < 16){
+      overlapMsg = "🔥 Asia–Europe Overlap (High Volatility)";
+    }
   }
+  else if(hours >= 15 && hours < 23){
+    sessionName = "🇪🇺 European Session (3PM - 11PM)";
+    endHour = 23;
+    color = "#FFD700";
+    nextSession = "🇺🇸 US Session (8PM - 5AM)";
+
+    if(hours >= 20 && hours < 23){
+      overlapMsg = "🔥 Europe–US Overlap (High Volatility)";
+    }
+  }
+  else if(hours >= 20 || hours < 5){
+    sessionName = "🇺🇸 US Session (8PM - 5AM)";
+    if(hours >= 20){ endHour = 24; }
+    else { endHour = 5; }
+    color = "#32CD32";
+    nextSession = "🌏 Asia Session (8AM - 4PM)";
+
+    if(hours >= 20 && hours < 23){
+      overlapMsg = "🔥 Europe–US Overlap (High Volatility)";
+    }
+  }
+  else {
+    sessionName = "🇺🇸 US Session (8PM - 5AM)";
+    endHour = 5;
+    color = "#32CD32";
+    nextSession = "🌏 Asia Session (8AM - 4PM)";
+  }
+
+  // Compute time left
+  let nowMins = hours * 60 + minutes;
+  let endMins = endHour * 60;
+  if(endHour === 24) endMins = 24 * 60;
+
+  let diffMins = endMins - nowMins;
+  if(diffMins < 0) diffMins += 24 * 60;
+
+  const hLeft = Math.floor(diffMins / 60);
+  const mLeft = diffMins % 60;
+
+  return {
+    name: sessionName,
+    timeLeft: `${hLeft}h ${mLeft}m`,
+    color: color,
+    next: nextSession,
+    overlap: overlapMsg
+  };
 }
 
-// ==== Display Current Session on Bot UI ====
-const sessionBox = document.createElement("div");
-sessionBox.style.cssText = `
-  font-size:18px;
+// ==== DISPLAY SESSION INFO ====
+const cryptoSessionBox = document.createElement("div");
+cryptoSessionBox.style.cssText = `
+  font-size:20px;
   font-weight:bold;
-  margin-top:10px;
-  color:cyan;
-  text-shadow:0 0 8px rgba(0,255,255,0.6);
+  margin-top:12px;
+  padding:12px;
+  border-radius:10px;
+  text-align:center;
+  box-shadow:0 0 12px rgba(0,255,255,0.7);
+  transition: all 0.3s ease;
 `;
-topGaugeWrap.appendChild(sessionBox);
+topGaugeWrap.appendChild(cryptoSessionBox);
 
-// Update every minute
-function updateSessionTime(){
-  sessionBox.innerHTML = "🕒 Current Session: <br>" + getTradingSession();
+// ==== Overlap Popup Alert ====
+const overlapPopup = document.createElement("div");
+overlapPopup.style.cssText = `
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: black;
+  border: 2px solid red;
+  color: white;
+  padding: 15px 25px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 10px;
+  box-shadow: 0 0 15px red;
+  display: none;
+  z-index: 9999;
+`;
+document.body.appendChild(overlapPopup);
+
+function showOverlapAlert(msg){
+  overlapPopup.innerHTML = "🚨 " + msg + " 🚨";
+  overlapPopup.style.display = "block";
+  overlapSound.play();
+
+  setTimeout(() => {
+    overlapPopup.style.display = "none";
+  }, 8000); // auto-hide after 8s
 }
-setInterval(updateSessionTime, 60000);
-updateSessionTime();
+
+// Update display
+function updateCryptoSession(){
+  const info = getCryptoSessionInfo();
+  cryptoSessionBox.style.color = info.color;
+  cryptoSessionBox.style.boxShadow = `0 0 20px ${info.color}`;
+
+  cryptoSessionBox.innerHTML = `
+    🕒 Current Crypto Session:<br>
+    <span style="font-size:22px;">${info.name}</span><br>
+    ⏳ Time left: <span style="color:white;">${info.timeLeft}</span><br><br>
+    🔜 Next: <span style="color:${info.color};">${info.next}</span>
+    ${info.overlap ? `<br><br><span style="color:red; font-size:22px;">${info.overlap}</span>` : ""}
+  `;
+
+  // Trigger sound + popup only if new overlap appears
+  if(info.overlap && info.overlap !== lastOverlap){
+    showOverlapAlert(info.overlap);
+  }
+  lastOverlap = info.overlap;
+}
+
+setInterval(updateCryptoSession, 1000);
+updateCryptoSession();
 </script>
