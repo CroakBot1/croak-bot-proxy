@@ -1787,6 +1787,147 @@ function animateNeedle(targetBull){
 }
 </script>
 
+<script>
+// ==== MOMENTUM TRACKING (IMPROVED) ====
+let bullHistory = [];
+
+// Function to update and draw momentum arrow inside canvas
+function drawMomentum(lctx, x, y, current){
+  // Keep short history
+  bullHistory.push(current);
+  if(bullHistory.length > 6) bullHistory.shift(); // last 6 points only
+
+  if(bullHistory.length < 2){
+    return; // not enough data yet
+  }
+
+  // Calculate average slope
+  let slopeSum = 0;
+  for(let i=1; i<bullHistory.length; i++){
+    slopeSum += (bullHistory[i] - bullHistory[i-1]);
+  }
+  const avgSlope = slopeSum / (bullHistory.length - 1);
+
+  // Threshold
+  const threshold = 0.2;
+
+  let text = "";
+  let color = "yellow";
+
+  if(avgSlope > threshold){
+    text = "📈 Momentum Rising ↑";
+    color = "lime";
+  } else if(avgSlope < -threshold){
+    text = "📉 Momentum Falling ↓";
+    color = "red";
+  } else {
+    text = "➖ Momentum Flat ➖";
+    color = "yellow";
+  }
+
+  // Draw text below percentage box
+  lctx.font = "bold 18px Arial";
+  lctx.fillStyle = color;
+  lctx.textAlign = "center";
+  lctx.fillText(text, x, y + 40);
+}
+
+// ==== MODIFY DRAW LINE GAUGE ====
+function drawLineGauge(bull){
+  lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
+
+  const margin = 60;
+  const startX = margin;
+  const endX   = lineCanvas.width - margin;
+  const midY   = lineCanvas.height/2;
+
+  // Gradient line
+  const grad = lctx.createLinearGradient(startX, midY, endX, midY);
+  grad.addColorStop(0,"#ff3333");
+  grad.addColorStop(0.5,"#ffff66");
+  grad.addColorStop(1,"#33ff33");
+
+  lctx.lineWidth = 30;
+  lctx.strokeStyle = grad;
+  lctx.lineCap = "round";
+  lctx.beginPath();
+  lctx.moveTo(startX, midY);
+  lctx.lineTo(endX, midY);
+  lctx.stroke();
+
+  // Needle position
+  const percent = bull/100; 
+  const nx = startX + (endX-startX)*percent;
+  const needleTop = midY - 50;
+  const needleBottom = midY + 50;
+
+  // Trail effect
+  trail.push(nx);
+  if(trail.length > 20) trail.shift();
+
+  for(let i=0;i<trail.length;i++){
+    const alpha = i / trail.length;
+    lctx.beginPath();
+    lctx.strokeStyle = `rgba(255,255,0,${alpha*0.6})`;
+    lctx.lineWidth = 2;
+    lctx.moveTo(trail[i], needleTop);
+    lctx.lineTo(trail[i], needleBottom);
+    lctx.stroke();
+  }
+
+  // Main needle
+  lctx.beginPath();
+  lctx.strokeStyle = "yellow";
+  lctx.lineWidth = 4;
+  lctx.shadowColor = "rgba(255,255,0,0.8)";
+  lctx.shadowBlur = 12;
+  lctx.moveTo(nx, needleTop);
+  lctx.lineTo(nx, needleBottom);
+  lctx.stroke();
+  lctx.shadowBlur = 0;
+
+  // Labels
+  lctx.font = "bold 22px Arial";
+  lctx.textAlign = "center";
+  lctx.fillStyle = "red";
+  lctx.fillText("BEARISH", startX-40, midY+70);
+
+  lctx.fillStyle = "lime";
+  lctx.fillText("BULLISH", endX+40, midY+70);
+
+  // Neutral zone label
+  lctx.fillStyle = "#ffff66";
+  lctx.font = "bold 20px Arial";
+  lctx.fillText("NEUTRAL ZONE", (startX+endX)/2, midY+95);
+
+  // Percentage box
+  const text = bull.toFixed(1) + "%";
+  lctx.font = "bold 20px Arial";
+  const textWidth = lctx.measureText(text).width;
+
+  lctx.fillStyle = "rgba(0,0,0,0.7)";
+  lctx.fillRect(nx - textWidth/2 - 8, midY - 18, textWidth + 16, 30);
+
+  lctx.fillStyle = bull >= 50 ? "lime" : "red";
+  lctx.textBaseline = "middle";
+  lctx.fillText(text, nx, midY);
+
+  // ==== NEW: Momentum Arrow ====
+  drawMomentum(lctx, nx, midY, bull);
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
