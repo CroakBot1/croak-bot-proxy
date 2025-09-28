@@ -2186,3 +2186,55 @@ function onBullUpdate(newBull) {
 // This script is educational only. Thresholds, SL/TP levels, and position sizes
 // are generic examples. Always backtest before live trading. Not financial advice.
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// ==== TRADING SESSIONS (FOREX style, GMT+8 Philippine Time) ====
+function getTradingSession(){
+  const now = new Date();
+  const hours = now.getHours();
+
+  if(hours >= 5 && hours < 14){
+    return "Sydney Session 🇦🇺 (5AM - 2PM)";
+  } 
+  else if(hours >= 7 && hours < 16){
+    return "Tokyo Session 🇯🇵 (7AM - 4PM)";
+  } 
+  else if(hours >= 15 && hours < 24){
+    return "London Session 🇬🇧 (3PM - 12AM)";
+  } 
+  else {
+    // from 12AM - 5AM, New York overlaps
+    return "New York Session 🇺🇸 (8PM - 5AM)";
+  }
+}
+
+// ==== Display Current Session on Bot UI ====
+const sessionBox = document.createElement("div");
+sessionBox.style.cssText = `
+  font-size:18px;
+  font-weight:bold;
+  margin-top:10px;
+  color:cyan;
+  text-shadow:0 0 8px rgba(0,255,255,0.6);
+`;
+topGaugeWrap.appendChild(sessionBox);
+
+// Update every minute
+function updateSessionTime(){
+  sessionBox.innerHTML = "🕒 Current Session: <br>" + getTradingSession();
+}
+setInterval(updateSessionTime, 60000);
+updateSessionTime();
+</script>
