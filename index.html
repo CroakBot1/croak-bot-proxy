@@ -1916,6 +1916,94 @@ function drawLineGauge(bull){
   drawMomentum(lctx, nx, midY, bull);
 }
 </script>
+<script>
+// ==== SELL ALERT FEATURE ====
+let lastBullValue = null;
+let sellAlertTriggered = false;
+
+function checkSellAlert(current){
+  if(lastBullValue !== null){
+    // Condition: from very high (100%) down to very low (<=40%)
+    if(lastBullValue >= 100 && current <= 40 && !sellAlertTriggered){
+      sellAlertTriggered = true; // prevent repeated alerts
+      alert("SELL YOUR TRADE NOW!");
+    }
+  }
+  lastBullValue = current;
+}
+
+// ==== MOMENTUM ARROW (IMPROVED) ====
+
+// Container for momentum status
+const momentumBox = document.createElement("div");
+momentumBox.style.cssText = `
+  font-size:18px;
+  font-weight:bold;
+  margin-top:12px;
+  color:white;
+  text-shadow:0 0 8px rgba(255,255,255,0.5);
+`;
+topGaugeWrap.appendChild(momentumBox);
+
+// Track last values for smoother momentum
+let bullHistory = [];
+
+// Function to update momentum status
+function updateMomentum(current){
+  bullHistory.push(current);
+  if(bullHistory.length > 6) bullHistory.shift(); // keep last 6 points
+
+  if(bullHistory.length < 2){
+    momentumBox.innerHTML = "⏳ Waiting for data...";
+    return;
+  }
+
+  // Calculate average slope (momentum trend)
+  let slopeSum = 0;
+  for(let i=1; i<bullHistory.length; i++){
+    slopeSum += (bullHistory[i] - bullHistory[i-1]);
+  }
+  const avgSlope = slopeSum / (bullHistory.length - 1);
+
+  // Threshold to avoid flicker
+  const threshold = 0.2;
+
+  if(avgSlope > threshold){
+    momentumBox.innerHTML = `<span style="color:lime;">📈 Momentum Rising (Bullish) ↑</span>`;
+  } else if(avgSlope < -threshold){
+    momentumBox.innerHTML = `<span style="color:red;">📉 Momentum Falling (Bearish) ↓</span>`;
+  } else {
+    momentumBox.innerHTML = `<span style="color:yellow;">➖ Momentum Flat (Neutral) ➖</span>`;
+  }
+
+  // 🔔 Check sell alert here
+  checkSellAlert(current);
+}
+
+// ==== Tweak animateNeedle to update momentum ====
+function animateNeedle(targetBull){
+  const duration = 600; 
+  const start = currentBull;
+  const diff = targetBull - start;
+  const startTime = performance.now();
+
+  function step(now){
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    currentBull = start + diff * eased;
+
+    drawLineGauge(currentBull);
+
+    if(progress < 1){
+      requestAnimationFrame(step);
+    } else {
+      // Update momentum + check alert only when the move finishes
+      updateMomentum(currentBull);
+    }
+  }
+  requestAnimationFrame(step);
+}
+</script>
 
 
 
