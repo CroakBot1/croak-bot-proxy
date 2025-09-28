@@ -1928,7 +1928,7 @@ function drawLineGauge(bull){
 
 
 <script>
-// ==== MODIFY DRAW LINE GAUGE WITH SELL ZONE LINE ====
+// ==== MODIFY DRAW LINE GAUGE WITH SELL & BUY ZONES ====
 function drawLineGauge(bull){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
@@ -1955,23 +1955,38 @@ function drawLineGauge(bull){
   const sellPercent = 0.40; // 40%
   const sellX = startX + (endX - startX) * sellPercent;
 
-  // Vertical line at 40%
   lctx.beginPath();
   lctx.strokeStyle = "red";
   lctx.lineWidth = 3;
-  lctx.setLineDash([8, 6]); // dashed line
+  lctx.setLineDash([8, 6]);
   lctx.moveTo(sellX, midY - 60);
   lctx.lineTo(sellX, midY + 60);
   lctx.stroke();
-  lctx.setLineDash([]); // reset to solid
+  lctx.setLineDash([]);
 
-  // Label "SELL ZONE"
   lctx.font = "bold 18px Arial";
   lctx.fillStyle = "red";
   lctx.textAlign = "center";
   lctx.fillText("SELL ZONE", sellX, midY - 70);
 
-  // Needle position
+  // ==== BUY ZONE LINE (at 100%) ====
+  const buyPercent = 1.0; // 100%
+  const buyX = startX + (endX - startX) * buyPercent;
+
+  lctx.beginPath();
+  lctx.strokeStyle = "lime";
+  lctx.lineWidth = 3;
+  lctx.setLineDash([8, 6]);
+  lctx.moveTo(buyX, midY - 60);
+  lctx.lineTo(buyX, midY + 60);
+  lctx.stroke();
+  lctx.setLineDash([]);
+
+  lctx.font = "bold 18px Arial";
+  lctx.fillStyle = "lime";
+  lctx.fillText("BUY ZONE", buyX, midY - 70);
+
+  // ==== Needle position ====
   const percent = bull/100; 
   const nx = startX + (endX-startX)*percent;
   const needleTop = midY - 50;
@@ -2029,6 +2044,7 @@ function drawLineGauge(bull){
   lctx.fillText(text, nx, midY);
 }
 </script>
+
 
 
 
