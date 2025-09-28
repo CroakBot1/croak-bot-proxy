@@ -1921,149 +1921,114 @@ function drawLineGauge(bull){
 
 
 
+
+
+
+
+
+
 <script>
-// ==== SELL ALERT MODAL ====
-const sellAlert = document.createElement("div");
-sellAlert.style.cssText = `
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(20, 0, 0, 0.95);
-  border: 3px solid red;
-  border-radius: 12px;
-  padding: 30px 50px;
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
-  text-align: center;
-  box-shadow: 0 0 25px red;
-  z-index: 10000;
-  display: none;
-  animation: flashRed 1s infinite;
-`;
-sellAlert.innerHTML = `
-  🚨 <span style="color:red;">SELL YOUR TRADE NOW!</span> 🚨
-  <br><br>
-  <button id="closeSellAlert" style="
-    margin-top:15px;
-    padding:10px 20px;
-    font-size:18px;
-    font-weight:bold;
-    background:red;
-    color:white;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    box-shadow:0 0 10px black;
-  ">Close</button>
-`;
-document.body.appendChild(sellAlert);
+// ==== MODIFY DRAW LINE GAUGE WITH SELL ZONE LINE ====
+function drawLineGauge(bull){
+  lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
 
-// Flash animation
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes flashRed {
-  0%   { box-shadow: 0 0 15px red; }
-  50%  { box-shadow: 0 0 40px red; }
-  100% { box-shadow: 0 0 15px red; }
-}
-`;
-document.head.appendChild(style);
+  const margin = 60;
+  const startX = margin;
+  const endX   = lineCanvas.width - margin;
+  const midY   = lineCanvas.height/2;
 
-// Close button event
-document.addEventListener("click", e => {
-  if(e.target.id === "closeSellAlert"){
-    sellAlert.style.display = "none";
-  }
-});
+  // Gradient line
+  const grad = lctx.createLinearGradient(startX, midY, endX, midY);
+  grad.addColorStop(0,"#ff3333");
+  grad.addColorStop(0.5,"#ffff66");
+  grad.addColorStop(1,"#33ff33");
 
-// ==== SELL ALERT CHECK ====
-let lastBullValue = null;
-let sellAlertTriggered = false;
+  lctx.lineWidth = 30;
+  lctx.strokeStyle = grad;
+  lctx.lineCap = "round";
+  lctx.beginPath();
+  lctx.moveTo(startX, midY);
+  lctx.lineTo(endX, midY);
+  lctx.stroke();
 
-function checkSellAlert(current){
-  if(lastBullValue !== null){
-    if(lastBullValue >= 100 && current <= 40 && !sellAlertTriggered){
-      sellAlertTriggered = true;
-      sellAlert.style.display = "block";
-    }
-  }
-  lastBullValue = current;
-}
+  // ==== SELL ZONE LINE (at 40%) ====
+  const sellPercent = 0.40; // 40%
+  const sellX = startX + (endX - startX) * sellPercent;
 
-// ==== MOMENTUM ARROW (IMPROVED) ====
+  // Vertical line at 40%
+  lctx.beginPath();
+  lctx.strokeStyle = "red";
+  lctx.lineWidth = 3;
+  lctx.setLineDash([8, 6]); // dashed line
+  lctx.moveTo(sellX, midY - 60);
+  lctx.lineTo(sellX, midY + 60);
+  lctx.stroke();
+  lctx.setLineDash([]); // reset to solid
 
-// Container for momentum status
-const momentumBox = document.createElement("div");
-momentumBox.style.cssText = `
-  font-size:18px;
-  font-weight:bold;
-  margin-top:12px;
-  color:white;
-  text-shadow:0 0 8px rgba(255,255,255,0.5);
-`;
-topGaugeWrap.appendChild(momentumBox);
+  // Label "SELL ZONE"
+  lctx.font = "bold 18px Arial";
+  lctx.fillStyle = "red";
+  lctx.textAlign = "center";
+  lctx.fillText("SELL ZONE", sellX, midY - 70);
 
-// Track last values for smoother momentum
-let bullHistory = [];
+  // Needle position
+  const percent = bull/100; 
+  const nx = startX + (endX-startX)*percent;
+  const needleTop = midY - 50;
+  const needleBottom = midY + 50;
 
-// Function to update momentum status
-function updateMomentum(current){
-  bullHistory.push(current);
-  if(bullHistory.length > 6) bullHistory.shift();
+  // Trail effect
+  trail.push(nx);
+  if(trail.length > 20) trail.shift();
 
-  if(bullHistory.length < 2){
-    momentumBox.innerHTML = "⏳ Waiting for data...";
-    return;
+  for(let i=0;i<trail.length;i++){
+    const alpha = i / trail.length;
+    lctx.beginPath();
+    lctx.strokeStyle = `rgba(255,255,0,${alpha*0.6})`;
+    lctx.lineWidth = 2;
+    lctx.moveTo(trail[i], needleTop);
+    lctx.lineTo(trail[i], needleBottom);
+    lctx.stroke();
   }
 
-  let slopeSum = 0;
-  for(let i=1; i<bullHistory.length; i++){
-    slopeSum += (bullHistory[i] - bullHistory[i-1]);
-  }
-  const avgSlope = slopeSum / (bullHistory.length - 1);
+  // Main needle
+  lctx.beginPath();
+  lctx.strokeStyle = "yellow";
+  lctx.lineWidth = 4;
+  lctx.shadowColor = "rgba(255,255,0,0.8)";
+  lctx.shadowBlur = 12;
+  lctx.moveTo(nx, needleTop);
+  lctx.lineTo(nx, needleBottom);
+  lctx.stroke();
+  lctx.shadowBlur = 0;
 
-  const threshold = 0.2;
+  // Labels
+  lctx.font = "bold 22px Arial";
+  lctx.textAlign = "center";
+  lctx.fillStyle = "red";
+  lctx.fillText("BEARISH", startX-40, midY+70);
 
-  if(avgSlope > threshold){
-    momentumBox.innerHTML = `<span style="color:lime;">📈 Momentum Rising (Bullish) ↑</span>`;
-  } else if(avgSlope < -threshold){
-    momentumBox.innerHTML = `<span style="color:red;">📉 Momentum Falling (Bearish) ↓</span>`;
-  } else {
-    momentumBox.innerHTML = `<span style="color:yellow;">➖ Momentum Flat (Neutral) ➖</span>`;
-  }
+  lctx.fillStyle = "lime";
+  lctx.fillText("BULLISH", endX+40, midY+70);
 
-  // 🔔 Check sell alert here
-  checkSellAlert(current);
-}
+  // Neutral zone label
+  lctx.fillStyle = "#ffff66";
+  lctx.font = "bold 20px Arial";
+  lctx.fillText("NEUTRAL ZONE", (startX+endX)/2, midY+95);
 
-// ==== Tweak animateNeedle to update momentum ====
-function animateNeedle(targetBull){
-  const duration = 600; 
-  const start = currentBull;
-  const diff = targetBull - start;
-  const startTime = performance.now();
+  // Percentage box
+  const text = bull.toFixed(1) + "%";
+  lctx.font = "bold 20px Arial";
+  const textWidth = lctx.measureText(text).width;
 
-  function step(now){
-    const progress = Math.min((now - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    currentBull = start + diff * eased;
+  lctx.fillStyle = "rgba(0,0,0,0.7)";
+  lctx.fillRect(nx - textWidth/2 - 8, midY - 18, textWidth + 16, 30);
 
-    drawLineGauge(currentBull);
-
-    if(progress < 1){
-      requestAnimationFrame(step);
-    } else {
-      updateMomentum(currentBull);
-    }
-  }
-  requestAnimationFrame(step);
+  lctx.fillStyle = bull >= 50 ? "lime" : "red";
+  lctx.textBaseline = "middle";
+  lctx.fillText(text, nx, midY);
 }
 </script>
-
-
-
 
 
 
