@@ -1916,17 +1916,77 @@ function drawLineGauge(bull){
   drawMomentum(lctx, nx, midY, bull);
 }
 </script>
+
+
+
+
+
 <script>
-// ==== SELL ALERT FEATURE ====
+// ==== SELL ALERT MODAL ====
+const sellAlert = document.createElement("div");
+sellAlert.style.cssText = `
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(20, 0, 0, 0.95);
+  border: 3px solid red;
+  border-radius: 12px;
+  padding: 30px 50px;
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 0 25px red;
+  z-index: 10000;
+  display: none;
+  animation: flashRed 1s infinite;
+`;
+sellAlert.innerHTML = `
+  🚨 <span style="color:red;">SELL YOUR TRADE NOW!</span> 🚨
+  <br><br>
+  <button id="closeSellAlert" style="
+    margin-top:15px;
+    padding:10px 20px;
+    font-size:18px;
+    font-weight:bold;
+    background:red;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    box-shadow:0 0 10px black;
+  ">Close</button>
+`;
+document.body.appendChild(sellAlert);
+
+// Flash animation
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes flashRed {
+  0%   { box-shadow: 0 0 15px red; }
+  50%  { box-shadow: 0 0 40px red; }
+  100% { box-shadow: 0 0 15px red; }
+}
+`;
+document.head.appendChild(style);
+
+// Close button event
+document.addEventListener("click", e => {
+  if(e.target.id === "closeSellAlert"){
+    sellAlert.style.display = "none";
+  }
+});
+
+// ==== SELL ALERT CHECK ====
 let lastBullValue = null;
 let sellAlertTriggered = false;
 
 function checkSellAlert(current){
   if(lastBullValue !== null){
-    // Condition: from very high (100%) down to very low (<=40%)
     if(lastBullValue >= 100 && current <= 40 && !sellAlertTriggered){
-      sellAlertTriggered = true; // prevent repeated alerts
-      alert("SELL YOUR TRADE NOW!");
+      sellAlertTriggered = true;
+      sellAlert.style.display = "block";
     }
   }
   lastBullValue = current;
@@ -1951,21 +2011,19 @@ let bullHistory = [];
 // Function to update momentum status
 function updateMomentum(current){
   bullHistory.push(current);
-  if(bullHistory.length > 6) bullHistory.shift(); // keep last 6 points
+  if(bullHistory.length > 6) bullHistory.shift();
 
   if(bullHistory.length < 2){
     momentumBox.innerHTML = "⏳ Waiting for data...";
     return;
   }
 
-  // Calculate average slope (momentum trend)
   let slopeSum = 0;
   for(let i=1; i<bullHistory.length; i++){
     slopeSum += (bullHistory[i] - bullHistory[i-1]);
   }
   const avgSlope = slopeSum / (bullHistory.length - 1);
 
-  // Threshold to avoid flicker
   const threshold = 0.2;
 
   if(avgSlope > threshold){
@@ -1997,7 +2055,6 @@ function animateNeedle(targetBull){
     if(progress < 1){
       requestAnimationFrame(step);
     } else {
-      // Update momentum + check alert only when the move finishes
       updateMomentum(currentBull);
     }
   }
