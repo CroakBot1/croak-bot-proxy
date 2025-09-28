@@ -1717,9 +1717,9 @@ updateTotalScore = function(){
 
 
 <script>
-// ==== MOMENTUM ARROW (NEW) ====
+// ==== MOMENTUM ARROW (IMPROVED) ====
 
-// container para sa momentum status
+// Container for momentum status
 const momentumBox = document.createElement("div");
 momentumBox.style.cssText = `
   font-size:18px;
@@ -1730,26 +1730,39 @@ momentumBox.style.cssText = `
 `;
 topGaugeWrap.appendChild(momentumBox);
 
-let lastBull = null;
+// Track last values for smoother momentum
+let bullHistory = [];
 
-// function para update momentum
+// Function to update momentum status
 function updateMomentum(current){
-  if(lastBull === null){
-    momentumBox.innerHTML = "⏳ Waiting data...";
-  } else {
-    const diff = current - lastBull;
-    if(diff > 0.3){ // threshold para dili sigeg flicker
-      momentumBox.innerHTML = `<span style="color:lime;">📈 Pa-BULLISH ↑</span>`;
-    } else if(diff < -0.3){
-      momentumBox.innerHTML = `<span style="color:red;">📉 Pa-BEARISH ↓</span>`;
-    } else {
-      momentumBox.innerHTML = `<span style="color:yellow;">➖ Neutral ➖</span>`;
-    }
+  bullHistory.push(current);
+  if(bullHistory.length > 6) bullHistory.shift(); // keep last 6 points
+
+  if(bullHistory.length < 2){
+    momentumBox.innerHTML = "⏳ Waiting for data...";
+    return;
   }
-  lastBull = current;
+
+  // Calculate average slope (momentum trend)
+  let slopeSum = 0;
+  for(let i=1; i<bullHistory.length; i++){
+    slopeSum += (bullHistory[i] - bullHistory[i-1]);
+  }
+  const avgSlope = slopeSum / (bullHistory.length - 1);
+
+  // Threshold to avoid flicker
+  const threshold = 0.2;
+
+  if(avgSlope > threshold){
+    momentumBox.innerHTML = `<span style="color:lime;">📈 Momentum Rising (Bullish) ↑</span>`;
+  } else if(avgSlope < -threshold){
+    momentumBox.innerHTML = `<span style="color:red;">📉 Momentum Falling (Bearish) ↓</span>`;
+  } else {
+    momentumBox.innerHTML = `<span style="color:yellow;">➖ Momentum Flat (Neutral) ➖</span>`;
+  }
 }
 
-// ==== I-tweak ang animateNeedle para update momentum ====
+// ==== Tweak animateNeedle to update momentum ====
 function animateNeedle(targetBull){
   const duration = 600; 
   const start = currentBull;
@@ -1766,13 +1779,14 @@ function animateNeedle(targetBull){
     if(progress < 1){
       requestAnimationFrame(step);
     } else {
-      // update momentum only at the end of move
+      // Update momentum only when the move finishes
       updateMomentum(currentBull);
     }
   }
   requestAnimationFrame(step);
 }
 </script>
+
 
 
 
