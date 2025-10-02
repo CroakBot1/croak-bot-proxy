@@ -2381,6 +2381,8 @@ updateCryptoSession();
 
 
 <script>
+let blinkPhase = 0; // pang control sa blinking
+
 // ==== MODIFY DRAW LINE GAUGE WITH SELL & BUY ZONES ====
 function drawLineGauge(bull){
   lctx.clearRect(0,0,lineCanvas.width,lineCanvas.height);
@@ -2404,17 +2406,20 @@ function drawLineGauge(bull){
   lctx.lineTo(endX, midY);
   lctx.stroke();
 
+  // ==== BLINKING EFFECT FACTOR ====
+  const blink = (Math.sin(Date.now()/400) + 1) / 2; // 0 → 1 oscillation
+
   // ==== SELL ZONE LINE (at 40%) ====
-  const sellPercent = 0.40; // 40%
+  const sellPercent = 0.40; 
   const sellX = startX + (endX - startX) * sellPercent;
 
   lctx.save();
   lctx.beginPath();
-  lctx.strokeStyle = "red";
+  lctx.strokeStyle = `rgba(255,0,0,${0.5 + blink*0.5})`; // opacity nag blink
   lctx.lineWidth = 3;
   lctx.setLineDash([8, 6]);
-  lctx.shadowColor = "rgba(255,0,0,0.8)";
-  lctx.shadowBlur = 12;   // Glow effect
+  lctx.shadowColor = "rgba(255,0,0,1)";
+  lctx.shadowBlur = 10 + blink * 20; // glowing intensity nag blink
   lctx.moveTo(sellX, midY - 60);
   lctx.lineTo(sellX, midY + 60);
   lctx.stroke();
@@ -2422,23 +2427,23 @@ function drawLineGauge(bull){
   lctx.setLineDash([]);
 
   lctx.font = "bold 18px Arial";
-  lctx.fillStyle = "red";
-  lctx.shadowColor = "rgba(255,0,0,0.8)";
-  lctx.shadowBlur = 15;
+  lctx.fillStyle = `rgba(255,0,0,${0.6 + blink*0.4})`;
+  lctx.shadowColor = "rgba(255,0,0,1)";
+  lctx.shadowBlur = 10 + blink*20;
   lctx.fillText("SELL ZONE", sellX, midY - 70);
   lctx.shadowBlur = 0;
 
   // ==== BUY ZONE LINE (at 100%) ====
-  const buyPercent = 1.0; // 100%
+  const buyPercent = 1.0; 
   const buyX = startX + (endX - startX) * buyPercent;
 
   lctx.save();
   lctx.beginPath();
-  lctx.strokeStyle = "lime";
+  lctx.strokeStyle = `rgba(0,255,0,${0.5 + blink*0.5})`;
   lctx.lineWidth = 3;
   lctx.setLineDash([8, 6]);
-  lctx.shadowColor = "rgba(0,255,0,0.8)";
-  lctx.shadowBlur = 12;   // Glow effect
+  lctx.shadowColor = "rgba(0,255,0,1)";
+  lctx.shadowBlur = 10 + blink*20;
   lctx.moveTo(buyX, midY - 60);
   lctx.lineTo(buyX, midY + 60);
   lctx.stroke();
@@ -2446,9 +2451,9 @@ function drawLineGauge(bull){
   lctx.setLineDash([]);
 
   lctx.font = "bold 18px Arial";
-  lctx.fillStyle = "lime";
-  lctx.shadowColor = "rgba(0,255,0,0.8)";
-  lctx.shadowBlur = 15;
+  lctx.fillStyle = `rgba(0,255,0,${0.6 + blink*0.4})`;
+  lctx.shadowColor = "rgba(0,255,0,1)";
+  lctx.shadowBlur = 10 + blink*20;
   lctx.fillText("BUY ZONE", buyX, midY - 70);
   lctx.shadowBlur = 0;
 
@@ -2508,5 +2513,9 @@ function drawLineGauge(bull){
   lctx.fillStyle = bull >= 50 ? "lime" : "red";
   lctx.textBaseline = "middle";
   lctx.fillText(text, nx, midY);
+
+  // Animate loop
+  requestAnimationFrame(()=>drawLineGauge(bull));
 }
 </script>
+
